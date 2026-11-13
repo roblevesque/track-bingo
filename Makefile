@@ -19,7 +19,7 @@ build: ## Build the Docker image locally
 	docker build -t $(FULL_IMAGE):$(TAG) -t $(FULL_IMAGE):latest .
 
 push: ## Push the tagged images to GitHub Container Registry
-	docker push $(FULL_IMAGE):$(TAG)
-	docker push $(FULL_IMAGE):latest
+	docker push ghcr.io/IMAGE_NAME/$(FULL_IMAGE):$(TAG)
+	docker push ghcr.io/IMAGE_NAME/$(FULL_IMAGE):latest
 
 release: build push ## Build and push the image in one step
