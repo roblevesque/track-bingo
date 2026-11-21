@@ -340,7 +340,7 @@ def test_games_count_towards_how_often_a_song_was_used(app, running_game):
 
 def test_saving_or_deleting_a_song_returns_to_the_same_search(app, logged_in, tmp_path):
     ids = seed_songs(app, logged_in, tmp_path, 2)
-    search = '!live "classic rock" & more'
+    search = 'song !live !"classic rock"'  # matches both seeded songs ("song 00", "song 01") and has awkward characters
     html = logged_in.get("/library", params={"q": search}).text
     assert f"/library/{ids[0]}/edit?q=" in html  # the Edit links remember the search
     edit = logged_in.get(f"/library/{ids[0]}/edit", params={"q": search}).text
