@@ -6,6 +6,42 @@ document.addEventListener("submit", (event) => {
   if (message && !window.confirm(message)) event.preventDefault();
 });
 
+// Coming back to the library after an edit: the song just edited (or the song list) is brought to the middle
+// of the screen and briefly highlighted, so the next song is right there without scrolling.
+(function focusLibraryTarget() {
+  const match = /^#(song-\d+|songs)$/.exec(window.location.hash);
+  const target = match && document.getElementById(match[1]);
+  if (!target || !document.querySelector("#songs")) return;
+  requestAnimationFrame(() => {
+    target.scrollIntoView({ block: match[1] === "songs" ? "start" : "center" });
+    if (match[1] !== "songs") target.classList.add("just-edited");
+  });
+})();
+
+// Tabs: <div data-tabs> holding role=tab buttons (data-tab="panel-id") and role=tabpanel panels. Without
+// scripting every panel simply shows.
+document.querySelectorAll("[data-tabs]").forEach((box) => {
+  const tabs = [...box.querySelectorAll("[role=tab]")];
+  const select = (chosen, focus) => {
+    tabs.forEach((tab) => {
+      const on = tab === chosen;
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+      tab.tabIndex = on ? 0 : -1;
+      const panel = document.getElementById(tab.dataset.tab);
+      if (panel) panel.hidden = !on;
+    });
+    if (focus) chosen.focus();
+  };
+  tabs.forEach((tab, i) => {
+    tab.addEventListener("click", () => select(tab, false));
+    tab.addEventListener("keydown", (event) => {
+      const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+      if (step) { event.preventDefault(); select(tabs[(i + step + tabs.length) % tabs.length], true); }
+    });
+  });
+  select(tabs.find((t) => t.getAttribute("aria-selected") === "true") || tabs[0], false);
+});
+
 // Copy buttons: <button data-copy="#id"> copies the text of that element.
 document.addEventListener("click", async (event) => {
   const button = event.target.closest?.("[data-copy]");

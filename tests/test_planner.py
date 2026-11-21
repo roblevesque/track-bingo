@@ -5,7 +5,7 @@ import pytest
 
 from app.services.planner import (
     ARTIST, HAVE, MAYBE, NEED, LibSong, PlanRow, add_tag, build_rows, find_header, guess_mapping, match_rows,
-    normalize, shopping_list, similarity, summarize,
+    normalize, owned_list, shopping_list, similarity, summarize,
 )
 from app.services.sheets import (
     MAX_ROWS, SheetError, clean_rows, rows_from_csv, rows_from_text, rows_from_upload, rows_from_xlsx, template_csv,
@@ -191,3 +191,18 @@ def test_tags_are_added_without_duplicates_and_within_the_limit():
     assert add_tag("70s", "70S") == "70s"
     assert add_tag("", "  ") is None and add_tag("a", "x,y") is None
     assert add_tag(",".join(f"t{i}" for i in range(20)), "new") is None
+
+
+def test_the_owned_list_has_each_library_song_once_in_sheet_order():
+    plan = [PlanRow(1, "Queen", "Killer Queen"), PlanRow(2, "Madonna", "Vogue"), PlanRow(3, "ABBA", ""),
+            PlanRow(4, "Cher", "Waterloo"), PlanRow(5, "ABBA", "Dancing Queen")]
+    owned = owned_list(match_rows(plan, LIB))
+    assert [(s.title, status) for s, status in owned] == [
+        ("Killer Queen", HAVE), ("Waterloo", ARTIST), ("Dancing Queen", ARTIST)]  # row 4 (close) and row 5 repeat ABBA songs
+    assert owned_list(match_rows([PlanRow(1, "Madonna", "Vogue")], LIB)) == []
+
+
+def test_an_artist_only_row_lists_at_most_five_songs():
+    many = [LibSong(i, f"Song {i}", "Cher", uses=i) for i in range(1, 9)]
+    owned = owned_list(match_rows([PlanRow(1, "Cher", "")], many))
+    assert [s.id for s, _ in owned] == [1, 2, 3, 4, 5]  # least used first

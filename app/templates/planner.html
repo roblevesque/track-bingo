@@ -72,17 +72,34 @@
     </p>
   </section>
 
-  {% if needs %}
-  <section class="card" id="to-get">
-    <h2>Songs to get</h2>
-    <pre id="to-get-text" class="to-get">{% for artist, song, note in needs %}{{ artist }}{% if artist and song %} &ndash; {% endif %}{{ song }}{% if note %}  ({{ note }}){% endif %}
+  <section class="card" id="lists" data-tabs>
+    <div class="tabs" role="tablist" aria-label="Lists from your sheet">
+      <button type="button" role="tab" id="tab-get" data-tab="panel-get" aria-controls="panel-get" aria-selected="true">Songs to get ({{ needs|length }})</button>
+      <button type="button" role="tab" id="tab-have" data-tab="panel-have" aria-controls="panel-have" aria-selected="false">Songs in library ({{ owned|length }})</button>
+    </div>
+
+    <div role="tabpanel" id="panel-get" aria-labelledby="tab-get">
+      {% if needs %}
+      <pre id="to-get-text" class="to-get">{% for artist, song, note in needs %}{{ artist }}{% if artist and song %} &ndash; {% endif %}{{ song }}{% if note %}  ({{ note }}){% endif %}
 {% endfor %}</pre>
-    <div class="row">
-      <button type="button" class="secondary" data-copy="#to-get-text">Copy the list</button>
-      <button type="submit" name="action" value="csv" class="secondary">Download as CSV</button>
+      <div class="row">
+        <button type="button" class="secondary" data-copy="#to-get-text">Copy the list</button>
+        <button type="submit" name="action" value="csv" class="secondary">Download as CSV</button>
+      </div>
+      {% else %}<p class="muted">Nothing to get: everything on the sheet is already in the library.</p>{% endif %}
+    </div>
+
+    <div role="tabpanel" id="panel-have" aria-labelledby="tab-have">
+      {% if owned %}
+      <pre id="have-text" class="to-get">{% for s, status in owned %}{{ s.title }}{% if s.artist %} &ndash; {{ s.artist }}{% endif %}  ({% if status == 'maybe' %}close match{% elif status == 'artist' %}by the artist{% else %}in library{% endif %}{% if s.tag_list %} &middot; tags: {{ s.tag_list|join(', ') }}{% endif %} &middot; {{ usage[s.id] }})
+{% endfor %}</pre>
+      <div class="row">
+        <button type="button" class="secondary" data-copy="#have-text">Copy the list</button>
+        <button type="submit" name="action" value="csv_library" class="secondary">Download as CSV</button>
+      </div>
+      {% else %}<p class="muted">None of the songs on the sheet are in the library yet.</p>{% endif %}
     </div>
   </section>
-  {% endif %}
 
   <section class="card" id="results">
     <h2>Line by line</h2>

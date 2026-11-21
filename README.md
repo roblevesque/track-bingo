@@ -43,10 +43,11 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   has been in), *close match*, *artist in the library* (for a row that names only an artist) or *to get*. Columns
   can be in either order: the planner guesses and you correct it with a dropdown. Songs used in 3 or more games
   (adjustable) are flagged, with other songs by the same artist offered. Tick songs to add a theme tag in one go, and
-  copy or download the songs still to get as a list. There is an Excel and a CSV template (Artist, Song) on the page.
+  copy or download the songs still to get, or the songs already in the library, from two tabs (Songs to get, Songs in library). There is an Excel and a CSV template (Artist, Song) on the page.
 - **Fun facts:** add a note to any song (on its edit page). While that song plays, only you see it, on the
   console and on the phone remote. Notes travel with exported games.
-- **Searching songs:** the library search and the new-game filter match every word. `!tag` leaves out songs
+- **Searching songs:** after editing a song you return to the same search, scrolled to the song you just edited.
+   the library search and the new-game filter match every word. `!tag` leaves out songs
   with that exact tag (`!"classic rock"` for a tag with a space) and `no:tags` finds songs with no tags.
 - **Sound effects:** one-click (or number-key) *Thinking*, *Win* and *Lose* sounds from the host console, for
   the moments around checking a claim.

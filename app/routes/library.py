@@ -35,10 +35,12 @@ MAX_TEXT = 200
 DURATION_SLACK_MS = 1000  # VBR MP3 durations are estimates
 
 
-def _library_url(q: str) -> str:
-    """The library page with the person's search still in place (only ever a search, never a free-form address)."""
+def _library_url(q: str, song_id: int | None = None) -> str:
+    """The library page with the person's search still in place (only ever a search, never a free-form address),
+    scrolled to the song just edited, or to the song list when there is no such song."""
     q = q.strip()[:100]
-    return f"/library?q={quote(q)}" if q else "/library"
+    anchor = f"#song-{song_id}" if song_id else "#songs"
+    return (f"/library?q={quote(q)}" if q else "/library") + anchor
 
 
 def _redirect(url: str) -> RedirectResponse:
@@ -247,7 +249,7 @@ async def edit_submit(
     session.add(song)
     session.commit()
     flash(request, f"Saved \u201c{song.title}\u201d.", "success")
-    return _redirect(_library_url(q))
+    return _redirect(_library_url(q, song.id))
 
 
 @router.post("/{song_id}/delete")

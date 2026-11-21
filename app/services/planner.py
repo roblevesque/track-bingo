@@ -251,6 +251,28 @@ def shopping_list(results: list[Result]) -> list[tuple[str, str, str]]:
     return out
 
 
+MAX_PER_ARTIST = 5
+
+
+def owned_list(results: list[Result]) -> list[tuple[LibSong, str]]:
+    """The library songs the sheet turned up, as (song, status), in sheet order and each song once: the match for
+    a song line, or (for an artist-only line) the artist's songs, least used first."""
+    seen: set[int] = set()
+    out: list[tuple[LibSong, str]] = []
+    for r in results:
+        if r.status in (HAVE, MAYBE):
+            picks = r.matches[:1]
+        elif r.status == ARTIST:
+            picks = r.matches[:MAX_PER_ARTIST]
+        else:
+            continue
+        for m in picks:
+            if m.song.id not in seen:
+                seen.add(m.song.id)
+                out.append((m.song, r.status))
+    return out
+
+
 # ---------------------------------------------------------------- tagging
 
 def add_tag(existing: str, tag: str) -> str | None:

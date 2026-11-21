@@ -29,7 +29,7 @@
     this many seconds away. You can turn that off for any single song.</p>
 </section>
 
-<section class="card">
+<section class="card" id="songs">
   <form method="get" action="/library" class="row">
     <input type="search" name="q" value="{{ q }}" placeholder="Search title, artist or tag"  title='Words must all match. !tag leaves a tag out (use quotes for tags with spaces: !"classic rock"). no:tags finds songs with no tags.'>
     <button type="submit">Search</button>
@@ -44,7 +44,7 @@
     </thead>
     <tbody>
     {% for song in songs %}
-      <tr>
+      <tr id="song-{{ song.id }}">
         <td>{{ song.title }}</td>
         <td>{{ song.artist }}</td>
         <td class="hide-sm">{% for tag in song.tag_list %}<span class="tag">{{ tag }}</span> {% endfor %}</td>

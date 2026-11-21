@@ -350,13 +350,31 @@ def test_saving_or_deleting_a_song_returns_to_the_same_search(app, logged_in, tm
     from urllib.parse import parse_qs, urlparse
     location = urlparse(saved.headers["location"])
     assert location.path == "/library" and parse_qs(location.query) == {"q": [search]}
+    assert location.fragment == f"song-{ids[0]}"  # the page scrolls to the song just edited
     plain = post(logged_in, f"/library/{ids[1]}/edit", f"/library/{ids[1]}/edit", title="U", artist="A", tags="")
-    assert plain.headers["location"] == "/library"
+    assert plain.headers["location"] == f"/library#song-{ids[1]}"
     deleted = post(logged_in, f"/library/{ids[1]}/delete", "/library", q="tag one")
     assert parse_qs(urlparse(deleted.headers["location"]).query) == {"q": ["tag one"]}
+    assert urlparse(deleted.headers["location"]).fragment == "songs"  # no song to show: the list itself
+    page = logged_in.get("/library").text
+    assert f'id="song-{ids[0]}"' in page and 'id="songs"' in page
+    assert f'/library#song-{ids[0]}' in logged_in.get(f"/library/{ids[0]}/edit").text  # Back to library lands on the song
 
 
 def test_a_search_cannot_be_used_to_redirect_elsewhere(app, logged_in, tmp_path):
     ids = seed_songs(app, logged_in, tmp_path, 1)
     r = post(logged_in, f"/library/{ids[0]}/edit", f"/library/{ids[0]}/edit", title="T", artist="A", tags="", q="https://evil.example/")
-    assert r.headers["location"].startswith("/library?q=https%3A")
+    assert r.headers["location"].startswith("/library?q=https%3A") and r.headers["location"].endswith(f"#song-{ids[0]}")
+
+
+def test_the_songs_in_the_library_tab_and_its_csv(app, logged_in, tmp_path):
+    titled(app, logged_in, tmp_path)
+    raw = "ABBA\tDancing Queen\nMadonna\tVogue\nQueen\t"
+    page = planner_post(logged_in, action="check", raw=raw, role_0="artist", role_1="song").text
+    assert 'id="tab-get"' in page and 'id="tab-have"' in page and "Songs in library (2)" in page and "Songs to get (1)" in page
+    r = planner_post(logged_in, action="csv_library", raw=raw, role_0="artist", role_1="song")
+    assert r.status_code == 200 and "songs-in-library.csv" in r.headers["content-disposition"]
+    lines = r.text.lstrip("\ufeff").splitlines()
+    assert lines[0] == "Artist,Song,Tags,Games used,Status"
+    assert "ABBA,Dancing Queen,70s,0,In library" in lines and "Queen,Killer Queen,,0,By the artist" in lines
+    assert not any("Madonna" in line for line in lines)

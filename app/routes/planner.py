@@ -14,7 +14,7 @@ from app.models import Game, GameSong, Song, User
 from app.security import check_csrf
 from app.services.planner import (
     DEFAULT_OVERUSE, HAVE, MAYBE, NEED, ROLES, LibSong, add_tag, build_rows, guess_mapping, match_rows,
-    shopping_list, summarize,
+    owned_list, shopping_list, summarize,
 )
 from app.services.sheets import (
     MAX_COLUMNS, MAX_UPLOAD_BYTES, SheetError, rows_from_text, rows_from_upload, template_csv, template_xlsx,
@@ -49,13 +49,16 @@ def _usage_text(song: LibSong) -> str:
     return f"used in {song.uses} game{'s' if song.uses != 1 else ''}, last “{song.last_game}” {when}".strip()
 
 
-def _csv(items: list[tuple[str, str, str]]) -> Response:
+label = {HAVE: "In library", MAYBE: "Close match", ARTIST: "By the artist"}
+
+
+def _csv(items: list[tuple], header=("Artist", "Song", "Note"), filename="songs-to-get.csv") -> Response:
     out = io.StringIO()
     writer = csv.writer(out, lineterminator="\r\n")
-    writer.writerow(("Artist", "Song", "Note"))
+    writer.writerow(header)
     writer.writerows(items)
-    return Response("﻿" + out.getvalue(), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": 'attachment; filename="songs-to-get.csv"'})
+    return Response("\ufeff" + out.getvalue(), media_type="text/csv; charset=utf-8",  # the BOM makes Excel read accents correctly
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 @router.get("")
@@ -88,7 +91,7 @@ async def check(request: Request, user: User = Depends(require_user), session: S
     form = await request.form()
     check_csrf(request, str(form.get("csrf_token", "")))
     action = str(form.get("action", "check"))
-    if action not in ("check", "tag", "csv"):
+    if action not in ("check", "tag", "csv", "csv_library"):
         raise HTTPException(status_code=400, detail="Unknown action")
     overuse = _int(form.get("overuse"), DEFAULT_OVERUSE, 1, 99)
     tag = " ".join(str(form.get("tag", "")).split())[:40]
@@ -152,6 +155,10 @@ async def check(request: Request, user: User = Depends(require_user), session: S
     results = match_rows(build_rows(rows, roles, header), library, overuse)
     if action == "csv":
         return _csv(shopping_list(results))
+    owned = owned_list(results)
+    if action == "csv_library":
+        return _csv([(s.artist, s.title, ", ".join(s.tag_list), s.uses, label[status]) for s, status in owned],
+                    header=("Artist", "Song", "Tags", "Games used", "Status"), filename="songs-in-library.csv")
 
     columns = [
         {"index": i, "letter": chr(65 + i), "role": roles[i],
@@ -162,5 +169,5 @@ async def check(request: Request, user: User = Depends(require_user), session: S
         request, "planner.html", user=user, results=results, summary=summarize(results), columns=columns,
         header=header, raw="\n".join("\t".join(r) for r in rows), overuse=overuse, tag=tag,
         usage={s.id: _usage_text(s) for r in results for s in [m.song for m in r.matches] + r.alternatives},
-        needs=shopping_list(results), guessed=fresh, row_count=len(rows),
+        needs=shopping_list(results), owned=owned, guessed=fresh, row_count=len(rows),
     )

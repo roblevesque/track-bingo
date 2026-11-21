@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Edit {{ song.title }} &middot; {{ app_name }}{% endblock %}
 {% block content %}
-<p><a href="/library{% if q %}?q={{ q|urlencode }}{% endif %}">&larr; Back to library{% if q %} (search: {{ q }}){% endif %}</a></p>
+<p><a href="/library{% if q %}?q={{ q|urlencode }}{% endif %}#song-{{ song.id }}">&larr; Back to library{% if q %} (search: {{ q }}){% endif %}</a></p>
 <h1>Edit song</h1>
 
 {% for error in errors %}<p class="flash error">{{ error }}</p>{% endfor %}
