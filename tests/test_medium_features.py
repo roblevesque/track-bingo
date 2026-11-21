@@ -191,3 +191,49 @@ def test_console_has_the_start_plays_option_and_new_game_says_select_all(app, ru
     html = host.get(f"/games/{game_id}/run").text
     assert 'id="start-plays"' in html and "checked" in html.split('id="start-plays"')[1][:80]
     assert "Select all" in host.get("/games/new").text
+
+
+# ---------------------------------------------------------------- Low tier: search, QR, fun facts
+
+def test_library_search_supports_excluding_tags_and_untagged_songs(app, logged_in, tmp_path):
+    ids = seed_songs(app, logged_in, tmp_path, 3)
+    for song_id, tags in zip(ids, ["live,rock", "rock", ""]):
+        post(logged_in, f"/library/{song_id}/edit", f"/library/{song_id}/edit", title=f"Track {song_id}", artist="A", tags=tags)
+    html = logged_in.get("/library?q=%21live").text
+    assert f"Track {ids[0]}" not in html and f"Track {ids[1]}" in html and f"Track {ids[2]}" in html
+    html = logged_in.get("/library?q=no%3Atags").text
+    assert f"Track {ids[2]}" in html and f"Track {ids[0]}" not in html and f"Track {ids[1]}" not in html
+
+
+def test_a_fun_fact_is_saved_shown_on_the_edit_page_and_used_on_the_console(app, running_game):
+    host, game_id, _ = running_game
+    song_id = pool_ids(app, game_id)[0]
+    r = post(host, f"/library/{song_id}/edit", f"/library/{song_id}/edit", title="T", artist="A", tags="",
+             fun_fact="  Recorded\n in one take ")
+    assert r.status_code == 303
+    assert "Recorded in one take" in host.get(f"/library/{song_id}/edit").text
+    too_long = post(host, f"/library/{song_id}/edit", f"/library/{song_id}/edit", title="T", artist="A", tags="", fun_fact="x" * 501)
+    assert too_long.status_code == 400
+    with Session(app.state.engine) as session:
+        from app.models import Song
+        assert session.get(Song, song_id).fun_fact == "Recorded in one take"
+    state = host.get(f"/games/{game_id}/run/state").json()
+    assert all("fun_fact" in s for s in state["upcoming"])
+
+
+def test_the_remote_qr_code_needs_the_remote_on_and_a_host_login(app, running_game):
+    host, game_id, _ = running_game
+    assert host.get(f"/games/{game_id}/run/remote-qr.svg").status_code == 404  # remote still off
+    assert host_post(host, game_id, "remote", mode="on").status_code == 200
+    r = host.get(f"/games/{game_id}/run/remote-qr.svg")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("image/svg+xml") and r.text.startswith("<svg")
+    assert r.headers["cache-control"] == "no-store"
+    assert new_player(app).get(f"/games/{game_id}/run/remote-qr.svg", follow_redirects=False).status_code in (303, 401, 403)
+    assert 'id="remote-qr"' in host.get(f"/games/{game_id}/run").text
+
+
+def test_the_pairing_page_fills_in_a_scanned_code(app, running_game):
+    host, game_id, _ = running_game
+    code = host_post(host, game_id, "remote", mode="on").json()["remote"]["code"]
+    html = new_player(app).get(f"/remote?code={code}").text
+    assert f'value="{code}"' in html and "Tap Connect" in html

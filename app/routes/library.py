@@ -23,7 +23,8 @@ from app.services.clips import (
     write_tags,
 )
 from app.services.gameio import sha256_file
-from app.services.parsing import format_time_ms, normalize_tags, parse_time_ms
+from app.services.search import matches, parse_query
+from app.services.parsing import MAX_FUN_FACT, clean_fun_fact, format_time_ms, normalize_tags, parse_time_ms
 from app.services.settings_store import get_clip_seconds, parse_clip_seconds, set_clip_seconds
 from app.web import flash, render
 
@@ -56,18 +57,10 @@ def library(
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
 ):
-    stmt = select(Song).order_by(func.lower(Song.title), Song.id)
-    needle = q.strip().lower()[:100]
-    if needle:
-        stmt = stmt.where(
-            or_(
-                *(
-                    func.lower(column).contains(needle, autoescape=True)
-                    for column in (Song.title, Song.artist, Song.tags)
-                )
-            )
-        )
-    songs = session.exec(stmt).all()
+    songs = session.exec(select(Song).order_by(func.lower(Song.title), Song.id)).all()
+    query = parse_query(q)
+    if not query.empty:  # filtered here rather than in SQL: a library is a few thousand rows at most
+        songs = [song for song in songs if matches(query, song.title, song.artist, song.tags)]
     return render(request, "library.html", user=user, songs=songs, q=q.strip(), clip_seconds=get_clip_seconds(session))
 
 
@@ -156,6 +149,7 @@ def _form_values(song: Song) -> dict[str, str]:
         "title": song.title,
         "artist": song.artist,
         "tags": ", ".join(song.tag_list),
+        "fun_fact": song.fun_fact,
         "start": format_time_ms(song.start_ms) if song.start_ms else "",
         "end": format_time_ms(song.end_ms),
         "auto_fill": song.auto_fill,
@@ -185,6 +179,7 @@ async def edit_submit(
     end: str = Form(""),
     write_tags_to_file: bool = Form(False),
     auto_fill: bool = Form(False),
+    fun_fact: str = Form(""),
     csrf_token: str = Form(""),
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
@@ -192,7 +187,10 @@ async def edit_submit(
     check_csrf(request, csrf_token)
     song = owned_song(session, user, song_id)
     title, artist = title.strip(), artist.strip()
+    fun_fact = clean_fun_fact(fun_fact)
     errors: list[str] = []
+    if len(fun_fact) > MAX_FUN_FACT:
+        errors.append(f"The fun fact can be at most {MAX_FUN_FACT} characters.")
     if not title:
         errors.append("Title is required.")
     if len(title) > MAX_TEXT or len(artist) > MAX_TEXT:
@@ -218,7 +216,7 @@ async def edit_submit(
                 errors.append("End is beyond the end of the track.")
 
     if errors:
-        form = {"title": title, "artist": artist, "tags": tags, "start": start, "end": end, "auto_fill": auto_fill}
+        form = {"title": title, "artist": artist, "tags": tags, "start": start, "end": end, "auto_fill": auto_fill, "fun_fact": fun_fact}
         return render(
             request, "edit_song.html", status_code=400, user=user, song=song, form=form, errors=errors,
             clip_seconds=get_clip_seconds(session),
@@ -236,6 +234,7 @@ async def edit_submit(
     song.tags = normalize_tags(tags)
     song.start_ms, song.end_ms = start_ms, end_ms
     song.auto_fill = auto_fill
+    song.fun_fact = fun_fact
     session.add(song)
     session.commit()
     flash(request, f"Saved \u201c{song.title}\u201d.", "success")

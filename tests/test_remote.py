@@ -93,7 +93,7 @@ def host_snapshot():
 def test_the_phone_view_has_what_a_remote_needs_and_nothing_more():
     view = remote_view(host_snapshot(), console_online=True)
     assert view["name"] == "Pub Night" and view["status"] == "active" and view["console_online"] is True
-    assert view["current"] == {"title": "Song 3", "artist": "A"} and view["next"]["id"] == 4
+    assert view["current"] == {"title": "Song 3", "artist": "A", "fun_fact": ""} and view["next"]["id"] == 4
     assert view["round"] == {"number": 1, "name": "Round 1", "text": "1 line (rows)"} and view["has_next_round"] is True
     assert [w["team"] for w in view["wins"]] == ["A", "B"]  # valid claims only, oldest first (the tie reads in order)
     assert view["effects"] == [{"id": "win", "label": "Win", "loop": False}]  # no file URLs: the console plays them

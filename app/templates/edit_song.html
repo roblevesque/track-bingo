@@ -25,6 +25,10 @@
       <input name="tags" value="{{ form.tags }}">
     </label>
 
+    <label>Fun fact or note <span class="muted">(only you see it: on the console and phone remote while this song plays)</span>
+      <textarea name="fun_fact" rows="3" maxlength="500">{{ form.fun_fact }}</textarea>
+    </label>
+
     <div class="row">
       <label>Start <span class="muted">(seconds or m:ss)</span>
         <input id="start" name="start" value="{{ form.start }}" inputmode="decimal">

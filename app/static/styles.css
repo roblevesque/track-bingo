@@ -215,3 +215,6 @@ main:has(.remote-page) { max-width: 520px; }
 .shape-list { display: flex; flex-wrap: wrap; gap: 1.2rem; }
 .shape-item p { margin: 0.3rem 0; }
 #rule-shapes label.check { display: block; }
+
+.qr { display: block; width: 200px; max-width: 100%; height: auto; border-radius: 8px; margin: 0.5rem 0; background: #fff; }
+.fun-fact { background: var(--accent-soft, #eef0ff); border-left: 4px solid var(--accent, #5b4bdb); padding: 0.5rem 0.75rem; border-radius: 4px; margin: 0.5rem 0; }

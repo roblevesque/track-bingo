@@ -139,9 +139,29 @@ function setupSongPicker() {
     counter.textContent = text;
   };
 
+  // Same rules as the library search (app/services/search.py): words must all match, !tag leaves a tag out,
+  // "quotes" keep a phrase together, and no:tags finds songs with no tags.
+  const parseQuery = (text) => {
+    const words = [], excluded = [];
+    let untagged = false;
+    for (const m of text.slice(0, 100).matchAll(/(!?)(?:"([^"]*)"?|(\S+))/g)) {
+      const token = (m[2] ?? m[3] ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+      if (!token || (token === "!" && !m[1])) continue;  // a lone "!" means nothing
+      if (m[1]) { if (!excluded.includes(token)) excluded.push(token); }
+      else if (token === "no:tags") untagged = true;
+      else words.push(token);
+    }
+    return { words, excluded, untagged };
+  };
+  const rowMatches = (row, query) => {
+    const tags = (row.dataset.tags || "").split(",").filter(Boolean);
+    if (query.untagged && tags.length) return false;
+    if (query.excluded.some((tag) => tags.includes(tag))) return false;
+    return query.words.every((word) => row.dataset.text.includes(word));
+  };
   filter?.addEventListener("input", () => {
-    const needle = filter.value.trim().toLowerCase();
-    rows.forEach((row) => { row.hidden = needle !== "" && !row.dataset.text.includes(needle); });
+    const query = parseQuery(filter.value);
+    rows.forEach((row) => { row.hidden = !rowMatches(row, query); });
   });
   picker.querySelector("[data-select=visible]")?.addEventListener("click", () => {
     rows.filter((row) => !row.hidden).forEach((row) => { checkbox(row).checked = true; });

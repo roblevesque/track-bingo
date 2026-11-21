@@ -36,6 +36,9 @@ if (root) {
     $("#r-round").textContent = state.round ? `${state.round.name}: ${state.round.text}` : "";
     $("#r-now").textContent = state.current ? state.current.title : "Nothing yet";
     $("#r-now-artist").textContent = state.current && state.current.artist ? `\u2014 ${state.current.artist}` : "";
+    const fact = state.current && state.current.fun_fact && active ? state.current.fun_fact : "";
+    $("#r-fact").textContent = fact ? `Fun fact: ${fact}` : "";
+    $("#r-fact").hidden = !fact;
     $("#r-next-song").textContent = state.next ? `${state.next.title}${state.next.artist ? " \u2014 " + state.next.artist : ""}` : "\u2014";
     $("#r-progress").textContent = draft ? "Game not started." : state.status === "finished" ? "The game has ended." : `${state.songs_played} of ${state.total_songs} songs played`;
 

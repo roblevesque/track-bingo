@@ -89,6 +89,7 @@ def host_state(session: Session, game: Game, join_url: str, remote: dict | None 
             "id": song.id,
             "title": song.title,
             "artist": song.artist,
+            "fun_fact": song.fun_fact,
             "audio_url": audio_url(song.id),
             "start_ms": song.start_ms,
             "end_ms": song.end_ms,

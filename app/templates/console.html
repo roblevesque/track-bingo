@@ -111,6 +111,7 @@
       <section class="card" id="queue-card">
         <h2>Now playing and coming up <span id="upcoming-count" class="muted"></span></h2>
         <p class="muted" id="progress"></p>
+        <p class="fun-fact" id="fun-fact" hidden></p>
         <ol id="upcoming" class="plain playlist scroll-list"><li class="muted">The play order is made when you start the game.</li></ol>
         <p class="muted">Only you can see the titles on this page.</p>
       </section>
@@ -128,7 +129,8 @@
           <button id="remote-turn-on" type="button">Turn on the remote</button>
         </div>
         <div id="remote-panel" hidden>
-          <p>On your phone, open <strong id="remote-url"></strong> and enter the code</p>
+          <p>Scan this with your phone's camera, or open <strong id="remote-url"></strong> and enter the code</p>
+          <img id="remote-qr" class="qr" alt="QR code that opens the phone remote with the code filled in" width="200" height="200" hidden>
           <p><strong class="code" id="remote-code"></strong></p>
           <p class="muted"><span id="remote-count"></span> <span id="remote-last"></span></p>
           <p class="muted">If a song doesn't start from the phone, click anywhere in this window once, so the

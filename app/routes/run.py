@@ -5,7 +5,7 @@ section, so they execute one at a time on the event loop.
 """
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from sqlmodel import Session, select
 
 from app.db import get_session
@@ -19,6 +19,7 @@ from app.services.events import HOST, REMOTE, Event, stream
 from app.services.patterns import MODE_LINES, describe_line, shapes_to_json
 from app.services.shapes_store import resolve_shapes
 from app.services.playlist import PlaylistExhausted, advance, new_play_order, played_ids, reshuffle_remaining, skip_next
+from app.services.qr import to_svg
 from app.services.remote import new_code
 from app.services.snapshots import audio_url, broadcast, host_state, remote_info, round_name
 from app.web import render
@@ -53,6 +54,17 @@ def _require_active(game: Game) -> None:
 def console(request: Request, game_id: int, user: User = Depends(require_user), session: Session = Depends(get_session)):
     game = owned_game(session, user, game_id)
     return render(request, "console.html", user=user, game=game, state=_state(request, session, game))
+
+
+@router.get("/remote-qr.svg")
+def remote_qr(request: Request, game_id: int, user: User = Depends(require_user), session: Session = Depends(get_session)):
+    """A QR code for the phone remote's address with the pairing code filled in, to scan from the console."""
+    game = owned_game(session, user, game_id)
+    if not game.remote_code:
+        raise HTTPException(status_code=404, detail="The remote is turned off")
+    base = remote_info(request.app.state.hub, game, join_url(request, game))["url"]
+    svg = to_svg(f"{base}?code={game.remote_code}")
+    return Response(svg, media_type="image/svg+xml", headers={"Cache-Control": "no-store"})
 
 
 @router.get("/state")

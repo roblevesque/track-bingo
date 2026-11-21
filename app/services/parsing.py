@@ -44,3 +44,11 @@ def format_time_ms(ms: int | None) -> str:
         return ""
     minutes, tenths = divmod(round(ms / 100), 600)
     return f"{minutes}:{tenths / 10:04.1f}"
+
+
+MAX_FUN_FACT = 500
+
+
+def clean_fun_fact(raw: str) -> str:
+    """A host's note about a song: one paragraph, with runs of spaces and line breaks tidied away."""
+    return " ".join(raw.split())

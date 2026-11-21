@@ -86,7 +86,7 @@ def export_game(
         ticket_footer=game.ticket_footer,
         songs=[
             SongEntry(ref=ref_of[s.id], title=s.title, artist=s.artist, tags=s.tags, duration_ms=s.duration_ms,
-                      start_ms=s.start_ms, end_ms=s.end_ms, sha256=s.sha256)
+                      start_ms=s.start_ms, end_ms=s.end_ms, sha256=s.sha256, fun_fact=s.fun_fact)
             for s in songs
         ],
         rounds=[
@@ -163,7 +163,7 @@ def perform_import(session: Session, settings, user: User, bundle_path: Path) ->
                 song = Song(
                     owner_id=user.id, filename=stored, original_name=Path(entry.clip).name, title=entry.title,
                     artist=entry.artist, tags=entry.tags, duration_ms=entry.duration_ms or info.duration_ms,
-                    start_ms=entry.start_ms, end_ms=entry.end_ms, sha256=digest,
+                    start_ms=entry.start_ms, end_ms=entry.end_ms, sha256=digest, fun_fact=entry.fun_fact,
                 )
                 session.add(song)
                 session.flush()

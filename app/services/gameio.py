@@ -22,7 +22,7 @@ import zipfile
 from dataclasses import dataclass, field, field
 from pathlib import Path
 
-from app.services.parsing import normalize_tags
+from app.services.parsing import MAX_FUN_FACT, normalize_tags
 from app.services.patterns import MAX_SHAPE_NAME, MAX_SHAPES_PER_ROUND, MODES, RoundRules, ShapeDef, validate_rules
 
 FORMAT = "musicbingo-game"
@@ -46,6 +46,7 @@ class SongEntry:
     title: str
     artist: str = ""
     tags: str = ""  # normalised, comma-separated, as the library stores it
+    fun_fact: str = ""  # the host's note about the song; absent in older files
     duration_ms: int | None = None
     start_ms: int = 0
     end_ms: int | None = None
@@ -103,6 +104,7 @@ def manifest_dict(bundle: GameBundle) -> dict:
                 "ref": s.ref, "title": s.title, "artist": s.artist,
                 "tags": [t for t in s.tags.split(",") if t], "duration_ms": s.duration_ms,
                 "start_ms": s.start_ms, "end_ms": s.end_ms, "sha256": s.sha256, "clip": s.clip,
+                "fun_fact": s.fun_fact,
             }
             for s in bundle.songs
         ],
@@ -214,6 +216,7 @@ def parse_manifest(data: object) -> GameBundle:
             ref=ref, title=title, artist=_text(raw.get("artist", ""), "An artist name", maximum=200),
             tags=normalize_tags(",".join(tags)), duration_ms=_int(raw.get("duration_ms"), "A duration", nullable=True),
             start_ms=start, end_ms=end, sha256=digest or "", clip=clip,
+            fun_fact=_text(raw.get("fun_fact", ""), "A fun fact", maximum=MAX_FUN_FACT),  # absent in older files
         ))
     refs = [s.ref for s in songs]
     if len(set(refs)) != len(refs):

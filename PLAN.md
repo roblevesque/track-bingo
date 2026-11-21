@@ -88,10 +88,10 @@ Medium priority (done)
 - [X] Optional "Start Game also starts the music" (on by default)
 - [X] Background music excludes the current game's playlist
 
-Low priority
-- [ ] Inverse tag search (`!tag`) and a "no tags" search
-- [ ] QR code for the phone remote
-- [ ] Song fun facts and notes for the host screen and phone remote
+Low priority (done)
+- [X] Inverse tag search (`!tag`) and a "no tags" search
+- [X] QR code for the phone remote
+- [X] Song fun facts and notes for the host screen and phone remote
 
 Extra low
 - [ ] Suggest clip sections from the song name
@@ -230,3 +230,5 @@ Phases 1 to 3 produce a playable game. Each phase ends with something runnable o
 - [X] Which win types ship in the MVP?
 
 Data model additions: `WinShape(name, size, cells)` global shapes; `Round.shapes_json` (a round's own copy of its shapes). Playlist edits go through `/games/{id}/playlist/*`.
+
+Low-tier additions: `Song.fun_fact`; `app/services/qr.py` (dependency-free QR encoder, SVG output, served from `/games/{id}/run/remote-qr.svg`); `app/services/search.py` (`!tag`, `no:tags`).

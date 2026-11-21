@@ -33,6 +33,11 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   controls and claims sit on the left and the playlist and teams on the right. Optional automatic next
   song and fade in/out.
 - **Phone remote:** run the game from your phone: next song, pause, replay, sound effects, and a bingo alert.
+  The console shows a QR code: scan it and the pairing code is filled in, so you only tap Connect.
+- **Fun facts:** add a note to any song (on its edit page). While that song plays, only you see it, on the
+  console and on the phone remote. Notes travel with exported games.
+- **Searching songs:** the library search and the new-game filter match every word. `!tag` leaves out songs
+  with that exact tag (`!"classic rock"` for a tag with a space) and `no:tags` finds songs with no tags.
 - **Sound effects:** one-click (or number-key) *Thinking*, *Win* and *Lose* sounds from the host console, for
   the moments around checking a claim.
 - **Background music:** play your whole library, shuffled and quiet, before and after the game.

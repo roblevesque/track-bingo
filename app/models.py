@@ -36,6 +36,7 @@ class Song(SQLModel, table=True):
     title: str = Field(max_length=200)
     artist: str = Field(default="", max_length=200)
     tags: str = ""  # normalised, comma-separated
+    fun_fact: str = Field(default="", max_length=500)  # a note for the host, shown on the console and phone remote
     duration_ms: int | None = None
     sha256: str = ""  # of the audio file; lets exported games find songs that are already in a library
     # Non-destructive play window: the file is never re-encoded.

@@ -31,7 +31,7 @@
 
 <section class="card">
   <form method="get" action="/library" class="row">
-    <input type="search" name="q" value="{{ q }}" placeholder="Search title, artist or tag">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search title, artist or tag"  title='Words must all match. !tag leaves a tag out (use quotes for tags with spaces: !"classic rock"). no:tags finds songs with no tags.'>
     <button type="submit">Search</button>
     {% if q %}<a href="/library">Clear</a>{% endif %}
   </form>

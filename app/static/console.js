@@ -326,6 +326,10 @@ if (root) {
     if (!remote.enabled) return;
     $("#remote-url").textContent = remote.url || `${window.location.origin}/remote`;
     $("#remote-code").textContent = remote.code;
+    const qr = $("#remote-qr");  // the code is in the address, so a new code means a new picture
+    const qrSrc = `/games/${gameId}/run/remote-qr.svg?c=${encodeURIComponent(remote.code)}`;
+    if (qr.getAttribute("src") !== qrSrc) qr.setAttribute("src", qrSrc);
+    qr.hidden = false;
     $("#remote-count").textContent = `${remote.connected} phone${remote.connected === 1 ? "" : "s"} connected.`;
   }
   async function setRemote(mode) {
@@ -428,6 +432,9 @@ if (root) {
     $("#btn-finish").disabled = !active;
 
     const song = state.current_song;
+    const funFact = active && song && song.fun_fact ? song.fun_fact : "";
+    $("#fun-fact").textContent = funFact ? `Fun fact: ${funFact}` : "";
+    $("#fun-fact").hidden = !funFact;
     $("#progress").textContent = draft ? "Game not started." : `${state.songs_played} of ${state.total_songs} songs played`;
     const upcoming = state.next_song;
     if (upcoming && upcoming.audio_url !== preloaded) { // fetch the next clip ahead of time
