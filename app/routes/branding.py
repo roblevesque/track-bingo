@@ -12,7 +12,9 @@ from app.deps import require_user
 from app.models import Branding, Game, User, utcnow
 from app.security import check_csrf
 from app.services.brand_store import branding_row, brand_style, logo_path
-from app.services.branding import MAX_UPLOAD_BYTES, InvalidLogo, normalize_hex, process_logo
+from app.services.branding import (
+    MAX_UPLOAD_BYTES, VARIABLE_HELP, InvalidLogo, normalize_hex, process_logo, unknown_variables,
+)
 from app.services.pdf import build_tickets_pdf, fonts_from_settings
 from app.web import flash, render
 
@@ -71,6 +73,11 @@ async def save_branding(
         errors.append(f"The header text can be at most {MAX_HEADER} characters.")
     if len(footer_text) > MAX_FOOTER:
         errors.append(f"The footer text can be at most {MAX_FOOTER} characters.")
+    for text in (header_text, footer_text):
+        bad = unknown_variables(text)
+        if bad:
+            errors.append(f"{bad[0]} isn't a known variable. You can use {VARIABLE_HELP}.")
+            break
     accent = ""
     if use_accent:
         accent = normalize_hex(accent_color) or ""

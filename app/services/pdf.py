@@ -12,7 +12,7 @@ from reportlab.lib.utils import ImageReader, simpleSplit
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen import canvas
 
-from app.services.branding import on_color
+from app.services.branding import expand_variables, on_color
 
 PAPER_SIZES = {"letter": letter, "a4": A4}
 ORIENTATIONS = ("landscape", "portrait")
@@ -145,12 +145,12 @@ def _draw_ticket(c, x, y, w, h, *, game_name, number, size, cells, fonts, brand,
     number_text = f"Card {number}"
     number_width = pdfmetrics.stringWidth(number_text, fonts.bold, 14)
     c.setFont(fonts.bold, 12)
-    title = printable(brand.header_text, fonts) or game_name
+    title = printable(expand_variables(brand.header_text, game_name=game_name), fonts) or game_name
     c.drawString(left, top - HEADER_HEIGHT + 8, shorten(title, fonts.bold, 12, x + w - number_width - 12 - left))
     c.setFont(fonts.bold, 14)
     c.drawRightString(x + w - 4, top - HEADER_HEIGHT + 8, number_text)
 
-    footer = printable(brand.footer_text, fonts)
+    footer = printable(expand_variables(brand.footer_text, game_name=game_name), fonts)
     big = w > 480  # a ticket with a whole landscape page to itself has room for a more readable footer
     footer_size, footer_height = (12, 24) if big else (8, FOOTER_HEIGHT)
     grid_bottom = y + (footer_height if footer else 0)

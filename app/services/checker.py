@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from app.services.patterns import (
     MODE_FULL_HOUSE,
+    MODE_SHAPES,
     Line,
     RoundRules,
     enabled_lines,
@@ -48,6 +49,14 @@ def verify_claim(
         if not unplayed:
             return ClaimResult(WIN, (), (), 0)
         return _rejected((), unplayed, cells)
+
+    if rules.mode == MODE_SHAPES:
+        shapes = [Line("shape", i, shape.cells, shape.name) for i, shape in enumerate(rules.shapes)]
+        done = [shape for shape in shapes if unplayed.isdisjoint(shape.cells)]
+        if done:
+            return ClaimResult(WIN, tuple(done), (), 0)
+        closest = min(shapes, key=lambda shape: len(unplayed & set(shape.cells)))  # the shape nearest to complete
+        return _rejected((), unplayed & set(closest.cells), cells)
 
     lines = enabled_lines(size, rules)
     complete = [line for line in lines if unplayed.isdisjoint(line.cells)]

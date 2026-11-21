@@ -20,6 +20,11 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   unique and use every song about equally often.
 - **Rounds with host-chosen patterns:** for each round the host decides what wins: rows, columns,
   diagonals, how many lines, or full house. The rules can be changed at any time, including mid-game.
+- **Custom win shapes:** draw a shape once on the **Shapes** page (or add the common ones: four corners, X,
+  L, T, frame, plus, diamond) and tick it for any round. A round set to *Custom shape* is won by the first
+  card that completes any ticked shape. Rounds keep their own copy, so deleting a shape never breaks a game.
+- **Editable playlist:** after a game is created, songs can be added, removed (if on no card) or replaced
+  (swapped on every card) from the game page, even mid-game. Songs already played can't be changed.
 - **Live play:** players join with a game code and a team name (no accounts), tap squares to mark
   them, and call Bingo. The server checks each claim against the songs actually played.
 - **Host console:** start, next song, replay, pause, skip, reshuffle the songs not yet played, move
@@ -33,7 +38,8 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
 - **Background music:** play your whole library, shuffled and quiet, before and after the game.
 - **Printed cards:** download every card as one numbered PDF (one landscape card per page by
   default), hand them out, and check a paper card by number from the console. Each game can have its
-  own footer line, for example to announce next week's game.
+  own footer line, for example to announce next week's game. Header and footer text can use
+  `${GAME.NAME}` and `${GAME.DATE}`, e.g. `Iron Horse - ${GAME.NAME}`.
 - **Card branding:** add your logo, an accent colour, and header and footer text from the web
   interface. They appear on the printed PDF and on the cards players see.
 - **Users and permissions:** administrators add accounts (with a generated one-time password) and choose
@@ -176,15 +182,22 @@ rather than the page.
 
 ### Background music
 
-Open **Background music** on the console (it starts collapsed) to play your *whole* library, shuffled, as
+Open **Background music** on the console (it starts collapsed) to play your library, shuffled (leaving out the songs in the current game), as
 background music before the game or once it has ended. Tracks play in full, one after another, and the
 list goes round again if it runs out. **Pause**, **Next track**, **Stop** and a volume slider (remembered
 in that browser, 40% to start) are there too. Tick **Start background music when I end the game** if you
 want it to begin by itself after **End game**.
 
+Songs in the current game's playlist are left out, so you never spoil the game.
+
 It is only available while a game is not running: when you press **Start game** the music eases out over
 about a second and the controls lock, and starting a sound effect pauses it. Like everything else it plays
 from the host's computer.
+
+### Starting the game
+
+**Start game** also plays the first song by default. Untick *Start game also plays the first song* on the
+console (remembered in that browser) to start silently and press **Next song** yourself.
 
 ### Automatic next song and fades
 

@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from sqlalchemy import JSON, Column, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
-from app.services.patterns import RoundRules
+from app.services.patterns import RoundRules, ShapeDef, parse_cells, shapes_from_json
 
 
 def utcnow() -> datetime:
@@ -54,6 +54,22 @@ class AppSetting(SQLModel, table=True):
 
     key: str = Field(primary_key=True)
     value: str = ""
+
+
+class WinShape(SQLModel, table=True):
+    """A custom winning pattern, defined once and ticked per round. It fits cards of one grid size."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(max_length=40)
+    size: int = Field(index=True)  # grid size it was drawn for
+    cells: str = ""  # comma-separated row-major positions
+
+    @property
+    def cell_list(self) -> tuple[int, ...]:
+        return parse_cells(self.cells)
+
+    def as_def(self) -> ShapeDef:
+        return ShapeDef(self.name, self.cell_list)
 
 
 class Branding(SQLModel, table=True):
@@ -118,6 +134,9 @@ class Round(SQLModel, table=True):
     rows: bool = True
     columns: bool = False
     diagonals: bool = False
+    # Custom shapes, copied into the round when ticked so the round keeps working if the shape is later
+    # changed or deleted: a JSON list of {"name", "cells"}, or "" for none.
+    shapes_json: str = ""
 
     def rules(self) -> RoundRules:
         return RoundRules(
@@ -126,6 +145,7 @@ class Round(SQLModel, table=True):
             rows=self.rows,
             columns=self.columns,
             diagonals=self.diagonals,
+            shapes=shapes_from_json(self.shapes_json),
         )
 
 

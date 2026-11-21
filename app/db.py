@@ -30,6 +30,7 @@ ADDITIVE_COLUMNS = {
         ("token_version", "INTEGER NOT NULL DEFAULT 0"),
     ],
     "song": [("sha256", "TEXT NOT NULL DEFAULT ''"), ("auto_fill", "INTEGER NOT NULL DEFAULT 1")],
+    "round": [("shapes_json", "TEXT NOT NULL DEFAULT ''")],
     "game": [
         ("current_round", "INTEGER NOT NULL DEFAULT 1"),
         ("series_id", "INTEGER"),

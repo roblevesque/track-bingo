@@ -80,13 +80,13 @@ High priority (done)
 - [X] "Tickets" renamed "Cards" in all visible text and URLs (old addresses redirect)
 - [X] Console: now playing and coming up in one list with the current song highlighted, and a separate Played box
 
-Medium priority
-- [ ] "Select Shown" renamed "Select All"
-- [ ] Custom win shapes (L, T and so on), defined globally and ticked per round
-- [ ] Game name in card headers, possibly with variables such as `${GAME.NAME}` filled in safely
-- [ ] Playlist editable after the game is created
-- [ ] Optional "Start Game also starts the music" (on by default)
-- [ ] Background music excludes the current game's playlist
+Medium priority (done)
+- [X] "Select Shown" renamed "Select All"
+- [X] Custom win shapes (L, T and so on), defined globally and ticked per round
+- [X] Game name in card headers, possibly with variables such as `${GAME.NAME}` filled in safely
+- [X] Playlist editable after the game is created
+- [X] Optional "Start Game also starts the music" (on by default)
+- [X] Background music excludes the current game's playlist
 
 Low priority
 - [ ] Inverse tag search (`!tag`) and a "no tags" search
@@ -228,3 +228,5 @@ Phases 1 to 3 produce a playable game. Each phase ends with something runnable o
 - [X] FastAPI vs Flask? (FastAPI)
 - [X] Do players need persistent accounts, or are game-code joins enough?
 - [X] Which win types ship in the MVP?
+
+Data model additions: `WinShape(name, size, cells)` global shapes; `Round.shapes_json` (a round's own copy of its shapes). Playlist edits go through `/games/{id}/playlist/*`.

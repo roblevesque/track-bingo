@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% block title %}{{ game.name }} &middot; {{ app_name }}{% endblock %}
 
-{% macro round_fields(r, size_hint) %}
+{% macro round_fields(r, selected) %}
   <label>Name <input name="name" value="{{ r.name if r else '' }}" maxlength="60" placeholder="e.g. Round 2"></label>
   <label>Wins with
     <select name="mode">
       <option value="lines" {% if not r or r.mode == 'lines' %}selected{% endif %}>Lines</option>
       <option value="full_house" {% if r and r.mode == 'full_house' %}selected{% endif %}>Full house</option>
+      <option value="shapes" {% if r and r.mode == 'shapes' %}selected{% endif %}>Custom shape</option>
     </select>
   </label>
   <label>Lines needed
@@ -17,6 +18,14 @@
     <label class="check"><input type="checkbox" name="rows" value="on" {% if not r or r.rows %}checked{% endif %}> Rows</label>
     <label class="check"><input type="checkbox" name="columns" value="on" {% if r and r.columns %}checked{% endif %}> Columns</label>
     <label class="check"><input type="checkbox" name="diagonals" value="on" {% if r and r.diagonals %}checked{% endif %}> Diagonals</label>
+  </fieldset>
+  <fieldset>
+    <legend class="muted">Custom shapes (used when &ldquo;Wins with&rdquo; is Custom shape; any one of them wins)</legend>
+    {% for s in shapes %}
+    <label class="check"><input type="checkbox" name="shape_ids" value="{{ s.id }}" {% if selected and s.id in selected %}checked{% endif %}> {{ s.name }}</label>
+    {% else %}
+    <p class="muted">No shapes for {{ game.grid_size }}&times;{{ game.grid_size }} cards yet. <a href="/shapes?size={{ game.grid_size }}">Make some</a>.</p>
+    {% endfor %}
   </fieldset>
 {% endmacro %}
 
@@ -85,12 +94,12 @@
 <section class="card">
   <h2>Rounds</h2>
   <p class="muted">You choose which patterns win in each round, and can change them as the game goes on.</p>
-  {% for r, text in rounds %}
+  {% for r, text, selected in rounds %}
   <details class="round">
     <summary><strong>{{ r.number }}. {{ r.name or ('Round ' ~ r.number) }}</strong> &mdash; {{ text }}</summary>
     <form method="post" action="/games/{{ game.id }}/rounds/{{ r.id }}" class="stack">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      {{ round_fields(r, game.grid_size) }}
+      {{ round_fields(r, selected) }}
       <button type="submit">Save round</button>
     </form>
     <form method="post" action="/games/{{ game.id }}/rounds/{{ r.id }}/delete" class="inline"
@@ -105,10 +114,71 @@
     <summary>Add a round</summary>
     <form method="post" action="/games/{{ game.id }}/rounds" class="stack">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      {{ round_fields(none, game.grid_size) }}
+      {{ round_fields(none, none) }}
       <button type="submit">Add round</button>
     </form>
   </details>
+</section>
+
+<section class="card" id="playlist">
+  <h2>Playlist <span class="muted">({{ playlist|length }} songs)</span></h2>
+  {% if game.status == 'finished' %}
+  <p class="muted">This game has finished. Run it again to change its songs.</p>
+  {% else %}
+  <p class="muted">Change the songs after the game is made. Songs already played never change, so claims stay valid.
+    A song on cards can be <strong>replaced</strong> (the new song takes its square on those cards, but cards you have
+    already printed still show the old one); only a song on no card can be removed. Songs you add are on no existing
+    card, so they just give you extra tracks to play.</p>
+  {% set swappable = playlist|rejectattr('played')|list %}
+  <div class="scroll"><table>
+    <thead><tr><th>Song</th><th class="hide-sm">Artist</th><th>On cards</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for row in playlist %}
+      <tr><td>{{ row.song.title }}</td><td class="hide-sm">{{ row.song.artist }}</td><td>{{ row.cards }}</td>
+        <td>{% if row.played %}played{% elif game.status == 'draft' %}ready{% else %}to come{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+
+  <details class="round">
+    <summary>Replace a song</summary>
+    <form method="post" action="/games/{{ game.id }}/playlist/replace" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Song to replace
+        <select name="song_id" required>{% for row in swappable %}<option value="{{ row.song.id }}">{{ row.song.title }}{% if row.song.artist %} &mdash; {{ row.song.artist }}{% endif %} ({{ row.cards }} cards)</option>{% endfor %}</select>
+      </label>
+      <label>With
+        <select name="with_id" required>{% for s in spare_songs %}<option value="{{ s.id }}">{{ s.title }}{% if s.artist %} &mdash; {{ s.artist }}{% endif %}</option>{% else %}<option value="" disabled selected>No other songs in the library</option>{% endfor %}</select>
+      </label>
+      <button type="submit" {% if not swappable or not spare_songs %}disabled{% endif %}>Replace</button>
+    </form>
+  </details>
+
+  <details class="round">
+    <summary>Remove a song</summary>
+    <form method="post" action="/games/{{ game.id }}/playlist/remove" class="stack" data-confirm="Remove this song from the game?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% set removable = swappable|selectattr('cards', 'equalto', 0)|list %}
+      <label>Song to remove <span class="muted">(only songs on no card)</span>
+        <select name="song_id" required>{% for row in removable %}<option value="{{ row.song.id }}">{{ row.song.title }}{% if row.song.artist %} &mdash; {{ row.song.artist }}{% endif %}</option>{% else %}<option value="" disabled selected>None: every song is on a card</option>{% endfor %}</select>
+      </label>
+      <button type="submit" {% if not removable %}disabled{% endif %}>Remove</button>
+    </form>
+  </details>
+
+  <details class="round">
+    <summary>Add songs</summary>
+    <form method="post" action="/games/{{ game.id }}/playlist/add" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="scroll-list pick-list">
+        {% for s in spare_songs %}
+        <label class="check"><input type="checkbox" name="song_ids" value="{{ s.id }}"> {{ s.title }}{% if s.artist %} &mdash; {{ s.artist }}{% endif %}</label>
+        {% else %}<p class="muted">Every song in your library is already in this game.</p>{% endfor %}
+      </div>
+      <button type="submit" {% if not spare_songs %}disabled{% endif %}>Add selected songs</button>
+    </form>
+  </details>
+  {% endif %}
 </section>
 
 <section class="card">

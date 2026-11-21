@@ -11,6 +11,7 @@ from app.models import Claim, Game, GameSong, Round, Song, Team, Ticket
 from app.services.effects import available_effects
 from app.services.events import HOST, PLAYERS, REMOTE, Event, Hub
 from app.services.patterns import describe_rules
+from app.services.shapes_store import shapes_for_size
 from app.services.playlist import played_ids
 from app.services.remote import remote_view
 
@@ -38,6 +39,7 @@ def _round_view(r: Round, size: int) -> dict:
         "rows": r.rows,
         "columns": r.columns,
         "diagonals": r.diagonals,
+        "shapes": [{"name": shape.name, "cells": list(shape.cells)} for shape in r.rules().shapes],
     }
 
 
@@ -110,6 +112,8 @@ def host_state(session: Session, game: Game, join_url: str, remote: dict | None 
         "join_url": join_url,
         "round": _round_view(current, game.grid_size) if current else None,
         "rounds": [_round_view(r, game.grid_size) for r in rounds],
+        # The global shapes that fit this card size, for ticking per round in the rules form.
+        "shapes": [{"id": s.id, "name": s.name, "cells": list(s.cell_list)} for s in shapes_for_size(session, game.grid_size)],
         "songs_played": game.current_index,
         "total_songs": len(order) or _pool_size(session, game),
         "current_song": song_view(played[-1]) if played else None,

@@ -26,6 +26,7 @@
           <button id="btn-finish" type="button" class="secondary danger">End game</button>
         </div>
         <div class="row">
+          <label class="check"><input type="checkbox" id="start-plays" checked> Start game also plays the first song</label>
           <label class="check"><input type="checkbox" id="auto-next"> Play the next song automatically</label>
           <label>Wait (seconds) after each clip
             <input type="number" id="auto-seconds" min="0" max="120" step="1" value="10"></label>
@@ -47,7 +48,7 @@
 
       <details class="card" id="bg-card">
         <summary><strong>Background music</strong> <span class="muted">(before and after the game)</span></summary>
-        <p class="muted">Plays your whole library, shuffled, track after track. It stops by itself when the game starts.</p>
+        <p class="muted">Plays your library, shuffled, track after track, leaving out the songs in this game's playlist so nothing gets spoiled. It stops by itself when the game starts.</p>
         <div class="row">
           <button id="bg-play" type="button">Play</button>
           <button id="bg-pause" type="button" class="secondary">Pause</button>
@@ -82,6 +83,7 @@
               <select name="mode">
                 <option value="lines">Lines</option>
                 <option value="full_house">Full house</option>
+                <option value="shapes">Custom shape</option>
               </select>
             </label>
             <label>Lines needed <input name="lines_required" type="number" min="1" value="1"></label>
@@ -90,6 +92,11 @@
               <label class="check"><input type="checkbox" name="rows"> Rows</label>
               <label class="check"><input type="checkbox" name="columns"> Columns</label>
               <label class="check"><input type="checkbox" name="diagonals"> Diagonals</label>
+            </fieldset>
+            <fieldset>
+              <legend class="muted">Custom shapes (when &ldquo;Wins with&rdquo; is Custom shape; any one wins)
+                &middot; <a href="/shapes" target="_blank" rel="noopener">edit shapes</a></legend>
+              <div id="rule-shapes"></div>
             </fieldset>
             <div class="row">
               <button type="submit">Save rules for this round</button>

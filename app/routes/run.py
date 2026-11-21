@@ -16,7 +16,8 @@ from app.routes.play import join_url
 from app.security import check_csrf
 from app.services.checker import verify_claim
 from app.services.events import HOST, REMOTE, Event, stream
-from app.services.patterns import MODE_LINES, describe_line
+from app.services.patterns import MODE_LINES, describe_line, shapes_to_json
+from app.services.shapes_store import resolve_shapes
 from app.services.playlist import PlaylistExhausted, advance, new_play_order, played_ids, reshuffle_remaining, skip_next
 from app.services.remote import new_code
 from app.services.snapshots import audio_url, broadcast, host_state, remote_info, round_name
@@ -83,13 +84,19 @@ async def events(request: Request, game_id: int, user: User = Depends(require_us
 def background_tracks(
     request: Request, game_id: int, user: User = Depends(require_user), session: Session = Depends(get_session)
 ):
-    """The host's whole library in a fresh random order, for background music before and after a game."""
-    owned_game(session, user, game_id)  # only the game's owner may ask
-    library = {s.id: s for s in session.exec(select(Song)).all()}
+    """The library in a fresh random order, for background music before and after a game.
+
+    Songs in this game's own playlist are left out, so the music doesn't give the game away."""
+    game = owned_game(session, user, game_id)
+    in_game = set(session.exec(select(GameSong.song_id).where(GameSong.game_id == game.id)).all())
+    library = {s.id: s for s in session.exec(select(Song)).all() if s.id not in in_game}
     order = new_play_order(list(library))[:1000]
-    return {"songs": [
-        {"id": sid, "title": library[sid].title, "artist": library[sid].artist, "audio_url": audio_url(sid)} for sid in order
-    ]}
+    return {
+        "songs": [
+            {"id": sid, "title": library[sid].title, "artist": library[sid].artist, "audio_url": audio_url(sid)} for sid in order
+        ],
+        "excluded": len(in_game),  # how many library songs were left out because they are in this game
+    }
 
 
 # ---------------------------------------------------------------- actions
@@ -202,7 +209,8 @@ async def select_round(request: Request, game_id: int, number: int = Form(...), 
 @router.post("/rules")
 async def update_rules(request: Request, game_id: int, round_id: int = Form(...), name: str = Form(""),
                        mode: str = Form(MODE_LINES), lines_required: str = Form("1"), rows: bool = Form(False),
-                       columns: bool = Form(False), diagonals: bool = Form(False), csrf_token: str = Form(""),
+                       columns: bool = Form(False), diagonals: bool = Form(False),
+                       shape_ids: list[int] = Form(default=[]), csrf_token: str = Form(""),
                        user: User = Depends(require_user), session: Session = Depends(get_session)):
     """Change what counts as a win. Allowed at any time, including mid-game."""
     check_csrf(request, csrf_token)
@@ -210,12 +218,13 @@ async def update_rules(request: Request, game_id: int, round_id: int = Form(...)
     target = session.get(Round, round_id)
     if target is None or target.game_id != game.id:
         raise HTTPException(status_code=404, detail="Round not found")
-    rules, errors = parse_rules(game, mode, lines_required, rows, columns, diagonals)
+    rules, errors = parse_rules(game, mode, lines_required, rows, columns, diagonals, resolve_shapes(session, game, shape_ids))
     if errors:
         raise _conflict(errors[0])
     target.name = (name.strip() or f"Round {target.number}")[:60]
     target.mode, target.lines_required = rules.mode, rules.lines_required
     target.rows, target.columns, target.diagonals = rules.rows, rules.columns, rules.diagonals
+    target.shapes_json = shapes_to_json(rules.shapes)
     session.add(target)
     return _commit_and_broadcast(request, session, game)
 
@@ -223,11 +232,11 @@ async def update_rules(request: Request, game_id: int, round_id: int = Form(...)
 @router.post("/rounds")
 async def add_round(request: Request, game_id: int, name: str = Form(""), mode: str = Form(MODE_LINES),
                     lines_required: str = Form("1"), rows: bool = Form(False), columns: bool = Form(False),
-                    diagonals: bool = Form(False), csrf_token: str = Form(""),
+                    diagonals: bool = Form(False), shape_ids: list[int] = Form(default=[]), csrf_token: str = Form(""),
                     user: User = Depends(require_user), session: Session = Depends(get_session)):
     check_csrf(request, csrf_token)
     game = owned_game(session, user, game_id)
-    rules, errors = parse_rules(game, mode, lines_required, rows, columns, diagonals)
+    rules, errors = parse_rules(game, mode, lines_required, rows, columns, diagonals, resolve_shapes(session, game, shape_ids))
     if errors:
         raise _conflict(errors[0])
     numbers = session.exec(select(Round.number).where(Round.game_id == game.id)).all()
@@ -235,6 +244,7 @@ async def add_round(request: Request, game_id: int, name: str = Form(""), mode: 
     session.add(Round(
         game_id=game.id, number=number, name=(name.strip() or f"Round {number}")[:60], mode=rules.mode,
         lines_required=rules.lines_required, rows=rules.rows, columns=rules.columns, diagonals=rules.diagonals,
+        shapes_json=shapes_to_json(rules.shapes),
     ))
     return _commit_and_broadcast(request, session, game)
 

@@ -42,3 +42,30 @@ def reshuffle_remaining(order: list[int], index: int, rng: random.Random | None 
     tail = list(order[index:])
     (rng or random.Random()).shuffle(tail)
     return list(order[:index]) + tail
+
+
+def insert_into_remaining(order: list[int], index: int, song_ids: list[int], rng: random.Random | None = None) -> list[int]:
+    """Add songs at random places among the songs still to come. The played prefix never changes."""
+    rng = rng or random.Random()
+    new_order = list(order)
+    for song_id in song_ids:
+        new_order.insert(rng.randint(index, len(new_order)), song_id)
+    return new_order
+
+
+def remove_from_remaining(order: list[int], index: int, song_id: int) -> list[int]:
+    """Take an unplayed song out of the order. ValueError if it has been played or isn't there."""
+    if song_id not in order[index:]:
+        raise ValueError("That song has already been played or isn't in this game.")
+    new_order = list(order)
+    new_order.pop(index + order[index:].index(song_id))
+    return new_order
+
+
+def replace_in_remaining(order: list[int], index: int, old_id: int, new_id: int) -> list[int]:
+    """Put another song in the place of an unplayed one, keeping its position in the order."""
+    if old_id not in order[index:]:
+        raise ValueError("That song has already been played or isn't in this game.")
+    new_order = list(order)
+    new_order[index + order[index:].index(old_id)] = new_id
+    return new_order

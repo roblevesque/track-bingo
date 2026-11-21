@@ -15,11 +15,15 @@ from app.models import Claim, Game, GameSong, Round, Song, Team, Ticket, User
 from app.security import check_csrf
 from app.services.series import latest_runs, series_key
 from app.services.brand_store import brand_context, brand_style
+from app.services.branding import VARIABLE_HELP, unknown_variables
 from app.services.pdf import (
     DEFAULT_ORIENTATION, DEFAULT_PER_PAGE, ORIENTATIONS, PAPER_SIZES, TICKETS_PER_PAGE,
     build_tickets_pdf, fonts_from_settings, with_footer,
 )
-from app.services.patterns import MODE_FULL_HOUSE, MODE_LINES, RoundRules, describe_rules, validate_rules
+from app.services.patterns import (
+    MODE_FULL_HOUSE, MODE_LINES, MODE_SHAPES, RoundRules, describe_rules, shapes_to_json, validate_rules,
+)
+from app.services.shapes_store import resolve_shapes, selected_ids, shapes_for_size
 from app.services.ticket_gen import TicketGenerationError, generate_tickets, variety_warning
 from app.web import flash, render
 
@@ -178,6 +182,19 @@ def game_detail(
 ):
     game = owned_game(session, user, game_id)
     rounds = session.exec(select(Round).where(Round.game_id == game.id).order_by(Round.number)).all()
+    available_shapes = shapes_for_size(session, game.grid_size)
+    pool_ids = set(session.exec(select(GameSong.song_id).where(GameSong.game_id == game.id)).all())
+    library = session.exec(select(Song).order_by(func.lower(Song.title), Song.id)).all()
+    card_counts: dict[int, int] = {}
+    for cells in session.exec(select(Ticket.cells).where(Ticket.game_id == game.id)).all():
+        for song_id in set(cells):
+            card_counts[song_id] = card_counts.get(song_id, 0) + 1
+    already_played = set(game.play_order[: game.current_index])
+    playlist = [
+        {"song": s, "cards": card_counts.get(s.id, 0), "played": s.id in already_played}
+        for s in library if s.id in pool_ids
+    ]
+    spare_songs = [s for s in library if s.id not in pool_ids]
     ticket_numbers = session.exec(select(Ticket.number).where(Ticket.game_id == game.id).order_by(Ticket.number)).all()
     song_count = session.exec(select(func.count(GameSong.song_id)).where(GameSong.game_id == game.id)).one()
     team_count = session.exec(select(func.count(Team.id)).where(Team.game_id == game.id)).one()
@@ -192,7 +209,10 @@ def game_detail(
         "game.html",
         user=user,
         game=game,
-        rounds=[(r, describe_rules(r.rules(), game.grid_size)) for r in rounds],
+        rounds=[(r, describe_rules(r.rules(), game.grid_size), selected_ids(r, available_shapes)) for r in rounds],
+        shapes=available_shapes,
+        playlist=playlist,
+        spare_songs=spare_songs,
         ticket_numbers=ticket_numbers,
         song_count=song_count,
         team_count=team_count,
@@ -226,16 +246,16 @@ def delete_game(
 # ---------------------------------------------------------------- rounds
 
 
-def parse_rules(game: Game, mode: str, lines_required: str, rows: bool, columns: bool, diagonals: bool):
+def parse_rules(game: Game, mode: str, lines_required: str, rows: bool, columns: bool, diagonals: bool, shapes=()):
     errors: list[str] = []
     try:
         required = int(lines_required)
     except ValueError:
         required = 1
         errors.append("Lines required must be a whole number.")
-    if mode not in (MODE_LINES, MODE_FULL_HOUSE):
+    if mode not in (MODE_LINES, MODE_FULL_HOUSE, MODE_SHAPES):
         errors.append("Unknown pattern type.")
-    rules = RoundRules(mode=mode, lines_required=required, rows=rows, columns=columns, diagonals=diagonals)
+    rules = RoundRules(mode=mode, lines_required=required, rows=rows, columns=columns, diagonals=diagonals, shapes=tuple(shapes))
     if not errors:
         errors.extend(validate_rules(rules, game.grid_size))
     return rules, errors
@@ -251,13 +271,14 @@ def add_round(
     rows: bool = Form(False),
     columns: bool = Form(False),
     diagonals: bool = Form(False),
+    shape_ids: list[int] = Form(default=[]),
     csrf_token: str = Form(""),
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
 ):
     check_csrf(request, csrf_token)
     game = owned_game(session, user, game_id)
-    rules, errors = parse_rules(game, mode, lines_required, rows, columns, diagonals)
+    rules, errors = parse_rules(game, mode, lines_required, rows, columns, diagonals, resolve_shapes(session, game, shape_ids))
     if errors:
         flash(request, errors[0], "error")
         return _redirect(f"/games/{game.id}")
@@ -273,6 +294,7 @@ def add_round(
             rows=rules.rows,
             columns=rules.columns,
             diagonals=rules.diagonals,
+            shapes_json=shapes_to_json(rules.shapes),
         )
     )
     session.commit()
@@ -298,6 +320,7 @@ def update_round(
     rows: bool = Form(False),
     columns: bool = Form(False),
     diagonals: bool = Form(False),
+    shape_ids: list[int] = Form(default=[]),
     csrf_token: str = Form(""),
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
@@ -305,7 +328,7 @@ def update_round(
     check_csrf(request, csrf_token)
     game = owned_game(session, user, game_id)
     target = _owned_round(session, game, round_id)
-    rules, errors = parse_rules(game, mode, lines_required, rows, columns, diagonals)
+    rules, errors = parse_rules(game, mode, lines_required, rows, columns, diagonals, resolve_shapes(session, game, shape_ids))
     if errors:
         flash(request, errors[0], "error")
         return _redirect(f"/games/{game.id}")
@@ -313,6 +336,7 @@ def update_round(
     target.mode = rules.mode
     target.lines_required = rules.lines_required
     target.rows, target.columns, target.diagonals = rules.rows, rules.columns, rules.diagonals
+    target.shapes_json = shapes_to_json(rules.shapes)
     session.add(target)
     session.commit()
     flash(request, f"Saved {target.name}.", "success")
@@ -400,6 +424,10 @@ def set_ticket_footer(
     text = " ".join(ticket_footer.split())
     if len(text) > MAX_TICKET_FOOTER:
         flash(request, f"The card footer can be at most {MAX_TICKET_FOOTER} characters.", "error")
+        return _redirect(f"/games/{game.id}")
+    bad = unknown_variables(text)
+    if bad:
+        flash(request, f"{bad[0]} isn't a known variable. You can use {VARIABLE_HELP}.", "error")
         return _redirect(f"/games/{game.id}")
     game.ticket_footer = text
     session.add(game)
@@ -502,7 +530,7 @@ def rerun_game(
     for r in session.exec(select(Round).where(Round.game_id == source.id).order_by(Round.number)).all():
         session.add(Round(
             game_id=game.id, number=r.number, name=r.name, mode=r.mode, lines_required=r.lines_required,
-            rows=r.rows, columns=r.columns, diagonals=r.diagonals,
+            rows=r.rows, columns=r.columns, diagonals=r.diagonals, shapes_json=r.shapes_json,
         ))
     session.add_all(Ticket(game_id=game.id, number=number, cells=cells) for number, cells in tickets)
     session.commit()

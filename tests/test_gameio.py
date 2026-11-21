@@ -173,3 +173,23 @@ def test_oversized_bundles_and_clips_are_refused(tmp_path):
         BundleReader(path, max_total_bytes=1000)  # unpacked size over the limit
     with BundleReader(path, max_clip_bytes=10) as reader, pytest.raises(BundleError):
         reader.copy_clip(reader.bundle.songs[0], tmp_path / "x.mp3")  # one clip over its cap
+
+
+def test_custom_shapes_round_trip_and_older_files_still_load():
+    bundle = make_bundle()
+    bundle.rounds[0].mode = "shapes"
+    bundle.rounds[0].shapes = [{"name": "L", "cells": [0, 3, 6, 7, 8]}]
+    manifest = json.loads(json.dumps(manifest_dict(bundle)))
+    assert parse_manifest(manifest).rounds[0].shapes == [{"name": "L", "cells": [0, 3, 6, 7, 8]}]
+    for entry in manifest["rounds"]:
+        entry.pop("shapes", None)  # a file exported before shapes existed
+    manifest["rounds"][0]["mode"] = "lines"
+    assert parse_manifest(manifest).rounds[0].shapes == []
+
+
+@pytest.mark.parametrize("bad", ["x", [1], [{"name": "", "cells": [1]}], [{"name": "L", "cells": []}], [{"name": "L", "cells": [-1]}]])
+def test_malformed_shapes_are_refused(bad):
+    manifest = json.loads(json.dumps(manifest_dict(make_bundle())))
+    manifest["rounds"][0]["shapes"] = bad
+    with pytest.raises(BundleError):
+        parse_manifest(manifest)

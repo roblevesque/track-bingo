@@ -11,9 +11,13 @@
   <form method="post" action="/branding" enctype="multipart/form-data" class="card" id="branding-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-    <label>Header text <span class="muted">(shown instead of the game name)</span>
-      <input name="header_text" id="header_text" value="{{ form.header_text }}" maxlength="80" placeholder="e.g. Thursday {{ app_name }}">
+    <label>Header text <span class="muted">(shown instead of the game name; leave empty to show just the game name)</span>
+      <input name="header_text" id="header_text" value="{{ form.header_text }}" maxlength="80" placeholder="e.g. Iron Horse - ${GAME.NAME}">
     </label>
+    <p class="muted">In the header or footer, <code>${GAME.NAME}</code> becomes the game's name and
+      <code>${GAME.DATE}</code> today's date when the cards are printed, so
+      <code>Iron Horse - ${GAME.NAME}</code> prints as &ldquo;Iron Horse - 90s Night&rdquo;. A game can also have its own footer
+      on the game page.</p>
     <label>Footer text <span class="muted">(printed along the bottom of each card)</span>
       <input name="footer_text" id="footer_text" value="{{ form.footer_text }}" maxlength="120" placeholder="e.g. The Rusty Anchor &middot; every Thursday at 8pm">
     </label>

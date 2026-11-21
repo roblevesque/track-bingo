@@ -17,6 +17,7 @@ from app.deps import require_game_creator, require_user
 from app.models import Game, GameSong, Round, Song, Ticket, User
 from app.routes.games import _new_code, owned_game
 from app.security import check_csrf
+from app.services.patterns import ShapeDef, shapes_to_json
 from app.services.clips import InvalidAudio, UploadTooLarge, new_stored_name, probe, save_upload
 from app.services.gameio import (
     BundleError, BundleReader, GameBundle, RoundEntry, SongEntry, TicketEntry, sha256_file, write_bundle,
@@ -90,7 +91,8 @@ def export_game(
         ],
         rounds=[
             RoundEntry(number=r.number, name=r.name, mode=r.mode, lines_required=r.lines_required,
-                       rows=r.rows, columns=r.columns, diagonals=r.diagonals)
+                       rows=r.rows, columns=r.columns, diagonals=r.diagonals,
+                       shapes=[{"name": s.name, "cells": list(s.cells)} for s in r.rules().shapes])
             for r in rounds
         ],
         tickets=[TicketEntry(number=t.number, cells=[ref_of[c] for c in t.cells]) for t in tickets],
@@ -185,7 +187,8 @@ def perform_import(session: Session, settings, user: User, bundle_path: Path) ->
             session.add_all(GameSong(game_id=game.id, song_id=song.id) for song in resolved.values())
             for r in bundle.rounds:
                 session.add(Round(game_id=game.id, number=r.number, name=r.name, mode=r.mode, lines_required=r.lines_required,
-                                  rows=r.rows, columns=r.columns, diagonals=r.diagonals))
+                                  rows=r.rows, columns=r.columns, diagonals=r.diagonals,
+                                  shapes_json=shapes_to_json([ShapeDef(s["name"], tuple(s["cells"])) for s in r.shapes])))
             session.add_all(
                 Ticket(game_id=game.id, number=t.number, cells=[resolved[ref].id for ref in t.cells]) for t in bundle.tickets
             )

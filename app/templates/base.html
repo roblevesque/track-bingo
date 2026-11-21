@@ -15,6 +15,7 @@
     <nav class="mainnav" aria-label="Main">
       <a href="/library"{% if path.startswith('/library') %} aria-current="page"{% endif %}>Library</a>
       <a href="/games"{% if path.startswith('/games') %} aria-current="page"{% endif %}>Games</a>
+      <a href="/shapes"{% if path.startswith('/shapes') %} aria-current="page"{% endif %}>Shapes</a>
       <a href="/branding"{% if path.startswith('/branding') %} aria-current="page"{% endif %}>Branding</a>
       {% if user.is_admin %}<a href="/users"{% if path.startswith('/users') %} aria-current="page"{% endif %}>Users</a>{% endif %}
     </nav>

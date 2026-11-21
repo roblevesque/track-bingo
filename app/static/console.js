@@ -22,6 +22,7 @@ if (root) {
   const effectsBox = $("#effects");
   const bgAudio = $("#bg-audio");
   const bgStatus = $("#bg-status");
+  const startPlays = $("#start-plays");
   const bgVolume = $("#bg-volume");
   const bgAfter = $("#bg-after");
 
@@ -50,12 +51,13 @@ if (root) {
     fadeSeconds.value = clampNumber(saved.fade, 0, 10, 0);
     bgVolume.value = clampNumber(saved.bgVolume, 0, 100, 40);
     bgAfter.checked = Boolean(saved.bgAfter);
+    startPlays.checked = saved.startPlays !== false; // on unless the host turned it off
   } catch { /* storage unavailable: keep the defaults in the page */ }
   const saveSettings = () => {
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify({
         auto: autoBox.checked, autoSeconds: autoSeconds.value, fade: fadeSeconds.value,
-        bgVolume: bgVolume.value, bgAfter: bgAfter.checked,
+        bgVolume: bgVolume.value, bgAfter: bgAfter.checked, startPlays: startPlays.checked,
       }));
     } catch { /* ignore */ }
   };
@@ -73,7 +75,10 @@ if (root) {
   async function post(action, fields = {}, options = {}) {
     const body = new FormData();
     body.set("csrf_token", csrf);
-    Object.entries(fields).forEach(([key, value]) => body.set(key, value));
+    Object.entries(fields).forEach(([key, value]) => {
+      if (Array.isArray(value)) value.forEach((item) => body.append(key, item)); // e.g. several shape ids
+      else body.set(key, value);
+    });
     let response;
     try {
       response = await fetch(`/games/${gameId}/run/${action}`, { method: "POST", body });
@@ -141,7 +146,12 @@ if (root) {
       bgStatus.textContent = "Couldn't load your library. Try again.";
       return;
     }
-    if (!data.songs.length) { bgStatus.textContent = "Your library is empty. Upload some songs first."; return; }
+    if (!data.songs.length) {
+      bgStatus.textContent = data.excluded
+        ? "Every song in your library is in this game's playlist, so there is nothing else to play. Upload more songs."
+        : "Your library is empty. Upload some songs first.";
+      return;
+    }
     bgQueue = data.songs;
     bgIndex = -1;
     bgErrors = 0;
@@ -194,6 +204,7 @@ if (root) {
   });
   bgVolume.addEventListener("input", () => { bgAudio.volume = bgLevel(); saveSettings(); });
   bgAfter.addEventListener("change", saveSettings);
+  startPlays.addEventListener("change", saveSettings);
 
   // ---- sound effects: the list comes from the server, so the buttons follow it
   function renderEffects() {
@@ -352,6 +363,30 @@ if (root) {
     rulesForm.elements.rows.checked = round.rows;
     rulesForm.elements.columns.checked = round.columns;
     rulesForm.elements.diagonals.checked = round.diagonals;
+    renderShapeChoices(round);
+  }
+
+  // The global shapes that fit this card size, ticked where this round already uses them. A round keeps its
+  // own copy of a shape, so a shape is matched to the round by name and squares.
+  function renderShapeChoices(round) {
+    const box = $("#rule-shapes");
+    const key = (s) => `${s.name}|${s.cells.join(",")}`;
+    const used = new Set((round.shapes || []).map(key));
+    const available = state.shapes || [];
+    if (!available.length) {
+      box.replaceChildren(el("p", "No shapes for this card size yet. Make some on the Shapes page.", "muted"));
+      return;
+    }
+    box.replaceChildren(...available.map((shape) => {
+      const label = el("label", "", "check");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.name = "shape_ids";
+      input.value = shape.id;
+      input.checked = used.has(key(shape));
+      label.append(input, ` ${shape.name}`);
+      return label;
+    }));
   }
 
   function renderRules() {
@@ -463,7 +498,9 @@ if (root) {
   $("#btn-start").addEventListener("click", async () => {
     stopBackground(true); // the game is about to begin
     const data = await post("start");
-    if (data) render(data);
+    if (!data) return;
+    render(data);
+    if (startPlays.checked) advance(); // the usual first step: play song one, so the host needn't press Next song too
   });
   $("#btn-next").addEventListener("click", () => advance());
   $("#btn-replay").addEventListener("click", () => { cancelCountdown(); playSong(state.current_song); });
@@ -494,6 +531,7 @@ if (root) {
     const f = rulesForm.elements;
     const fields = { name: f.name.value, mode: f.mode.value, lines_required: f.lines_required.value };
     ["rows", "columns", "diagonals"].forEach((key) => { if (f[key].checked) fields[key] = "on"; });
+    fields.shape_ids = [...rulesForm.querySelectorAll("input[name=shape_ids]:checked")].map((box) => box.value);
     return fields;
   };
   rulesForm.addEventListener("submit", async (event) => {

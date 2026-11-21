@@ -19,11 +19,11 @@ import json
 import re
 import time
 import zipfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, field
 from pathlib import Path
 
 from app.services.parsing import normalize_tags
-from app.services.patterns import MODES, RoundRules, validate_rules
+from app.services.patterns import MAX_SHAPE_NAME, MAX_SHAPES_PER_ROUND, MODES, RoundRules, ShapeDef, validate_rules
 
 FORMAT = "musicbingo-game"
 VERSION = 1
@@ -62,6 +62,7 @@ class RoundEntry:
     rows: bool = True
     columns: bool = False
     diagonals: bool = False
+    shapes: list[dict] = field(default_factory=list)  # [{"name": ..., "cells": [...]}] for custom-shape rounds
 
 
 @dataclass
@@ -109,6 +110,7 @@ def manifest_dict(bundle: GameBundle) -> dict:
             {
                 "number": r.number, "name": r.name, "mode": r.mode, "lines_required": r.lines_required,
                 "rows": r.rows, "columns": r.columns, "diagonals": r.diagonals,
+                "shapes": r.shapes,
             }
             for r in bundle.rounds
         ],
@@ -149,6 +151,23 @@ def _int(value: object, what: str, *, minimum: int = 0, maximum: int = 10**9, nu
     if isinstance(value, bool) or not isinstance(value, int) or not minimum <= value <= maximum:
         raise BundleError(f"{what} is not a valid number.")
     return value
+
+
+def _shapes(raw) -> list[dict]:
+    if not isinstance(raw, list) or len(raw) > MAX_SHAPES_PER_ROUND:
+        raise BundleError("A round's custom shapes are malformed.")
+    shapes = []
+    for item in raw:
+        if not isinstance(item, dict) or not isinstance(item.get("cells"), list):
+            raise BundleError("A round's custom shapes are malformed.")
+        cells = item["cells"]
+        if not all(isinstance(c, int) and not isinstance(c, bool) and 0 <= c < 10000 for c in cells):
+            raise BundleError("A round's custom shapes are malformed.")
+        name = _text(item.get("name", ""), "A shape name", maximum=MAX_SHAPE_NAME, required=True)
+        if not cells:
+            raise BundleError("A round's custom shapes are malformed.")
+        shapes.append({"name": name, "cells": cells})
+    return shapes
 
 
 def parse_manifest(data: object) -> GameBundle:
@@ -214,8 +233,10 @@ def parse_manifest(data: object) -> GameBundle:
             number=len(rounds) + 1, name=_text(raw.get("name", ""), "A round name", maximum=60), mode=mode,
             lines_required=_int(raw.get("lines_required", 1), "The lines required", minimum=1, maximum=100),
             rows=bool(raw.get("rows")), columns=bool(raw.get("columns")), diagonals=bool(raw.get("diagonals")),
+            shapes=_shapes(raw.get("shapes", [])),  # absent in files exported before custom shapes existed
         )
-        problems = validate_rules(RoundRules(entry.mode, entry.lines_required, entry.rows, entry.columns, entry.diagonals), size)
+        defs = tuple(ShapeDef(s["name"], tuple(s["cells"])) for s in entry.shapes)
+        problems = validate_rules(RoundRules(entry.mode, entry.lines_required, entry.rows, entry.columns, entry.diagonals, defs), size)
         if problems:
             raise BundleError(f"Round {entry.number}: {problems[0]}")
         rounds.append(entry)
