@@ -49,6 +49,20 @@ def friendly_message(status_code: int, detail: object) -> str:
     return detail or "Something went wrong."
 
 
+class RevalidatingStaticFiles(StaticFiles):
+    """Static files that the browser must re-check (a cheap ETag round trip) before reusing.
+
+    Without this a browser may keep running an old app.js against pages from a newer release, which looks
+    like a feature that silently does nothing. The scripts import each other, so versioned URLs alone
+    wouldn't cover them.
+    """
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or load_settings()
     settings.ensure_dirs()
@@ -112,7 +126,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         flash(request, "Please choose a new password before continuing.", "info")
         return RedirectResponse("/account", status_code=303)
 
-    app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+    app.mount("/static", RevalidatingStaticFiles(directory=BASE_DIR / "static"), name="static")
     app.include_router(auth.router)
     app.include_router(library.router)
     app.include_router(transfer.router)  # before games: /games/import must not be read as a game id

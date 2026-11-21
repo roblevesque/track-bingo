@@ -76,3 +76,12 @@ def test_only_administrators_see_the_users_tab(app, logged_in):
     other = new_player(app)
     login(other, "plain")
     assert 'href="/users"' not in other.get("/library").text
+
+
+def test_static_files_are_revalidated_so_a_new_release_is_never_masked_by_an_old_cached_script(client):
+    response = client.get("/static/app.js")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-cache"
+    assert response.headers.get("etag")  # so the re-check is a cheap 304 when nothing changed
+    again = client.get("/static/app.js", headers={"if-none-match": response.headers["etag"]})
+    assert again.status_code == 304
