@@ -115,16 +115,29 @@
     <label>Paper
       <select name="paper"><option value="letter">US Letter</option><option value="a4">A4</option></select>
     </label>
+    <label>Orientation
+      <select name="orientation"><option value="landscape" selected>Landscape</option><option value="portrait">Portrait</option></select>
+    </label>
     <label>Tickets per page
       <select name="per_page">
-        <option value="2" selected>2 (recommended)</option>
-        <option value="1">1</option>
+        <option value="1" selected>1</option>
+        <option value="2">2</option>
         <option value="4">4 (small print; best for 3&times;3 or 4&times;4)</option>
       </select>
     </label>
     <button type="submit">Download all {{ ticket_numbers|length }} tickets (PDF)</button>
   </form>
   <p class="muted">Each ticket is numbered, so you can check a printed ticket from the host console.</p>
+  <form method="post" action="/games/{{ game.id }}/ticket-footer" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Footer line for this game's tickets
+      <input name="ticket_footer" value="{{ game.ticket_footer }}" maxlength="120"
+             placeholder="e.g. Next week: 90s Night, Thursday 7pm">
+    </label>
+    <p class="muted">Printed at the bottom of every ticket, handy for announcing next week's game.
+      Leave it empty to use the footer from your Branding page.</p>
+    <button type="submit">Save footer</button>
+  </form>
   <p class="chips">
     {% for n in ticket_numbers %}<a class="chip" href="/games/{{ game.id }}/tickets/{{ n }}">{{ n }}</a>{% endfor %}
   </p>

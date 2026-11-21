@@ -6,6 +6,7 @@ TAG ?= $(shell git rev-parse --short HEAD)
 
 # Full image path (must be lowercase for ghcr.io)
 FULL_IMAGE := $(shell echo "$(REGISTRY)/$(GITHUB_USER)/$(IMAGE_NAME)" | tr '[:upper:]' '[:lower:]')
+REPO_URL := https://github.com/roblevesque/track-bingo
 
 .PHONY: help login build push release
 
@@ -16,10 +17,13 @@ login: ## Log in to GitHub Container Registry (requires CR_PAT env var)
 	@echo "$$CR_PAT" | docker login $(REGISTRY) -u $(GITHUB_USER) --password-stdin
 
 build: ## Build the Docker image locally
-	docker build -t $(FULL_IMAGE):$(TAG) -t $(FULL_IMAGE):latest .
+	docker build \
+		--label "org.opencontainers.image.source=$(REPO_URL)" \
+		-t $(FULL_IMAGE):$(TAG) \
+		-t $(FULL_IMAGE):latest .
 
 push: ## Push the tagged images to GitHub Container Registry
-	docker push ghcr.io/IMAGE_NAME/$(FULL_IMAGE):$(TAG)
-	docker push ghcr.io/IMAGE_NAME/$(FULL_IMAGE):latest
+	docker push $(FULL_IMAGE):$(TAG)
+	docker push $(FULL_IMAGE):latest
 
 release: build push ## Build and push the image in one step

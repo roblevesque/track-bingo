@@ -15,7 +15,10 @@ from app.models import Claim, Game, GameSong, Round, Song, Team, Ticket, User
 from app.security import check_csrf
 from app.services.series import latest_runs, series_key
 from app.services.brand_store import brand_context, brand_style
-from app.services.pdf import PAPER_SIZES, TICKETS_PER_PAGE, build_tickets_pdf, fonts_from_settings
+from app.services.pdf import (
+    DEFAULT_ORIENTATION, DEFAULT_PER_PAGE, ORIENTATIONS, PAPER_SIZES, TICKETS_PER_PAGE,
+    build_tickets_pdf, fonts_from_settings, with_footer,
+)
 from app.services.patterns import MODE_FULL_HOUSE, MODE_LINES, RoundRules, describe_rules, validate_rules
 from app.services.ticket_gen import TicketGenerationError, generate_tickets, variety_warning
 from app.web import flash, render
@@ -368,19 +371,47 @@ def ticket_view(
     )
 
 
+MAX_TICKET_FOOTER = 120
+
+
+@router.post("/{game_id}/ticket-footer")
+def set_ticket_footer(
+    request: Request,
+    game_id: int,
+    ticket_footer: str = Form(""),
+    csrf_token: str = Form(""),
+    user: User = Depends(require_user),
+    session: Session = Depends(get_session),
+):
+    """The line printed at the foot of this game's tickets (say, next week's game). Empty means
+    the host's branding footer is used instead."""
+    check_csrf(request, csrf_token)
+    game = owned_game(session, user, game_id)
+    text = " ".join(ticket_footer.split())
+    if len(text) > MAX_TICKET_FOOTER:
+        flash(request, f"The ticket footer can be at most {MAX_TICKET_FOOTER} characters.", "error")
+        return _redirect(f"/games/{game.id}")
+    game.ticket_footer = text
+    session.add(game)
+    session.commit()
+    flash(request, "Ticket footer saved." if text else "Ticket footer cleared: the branding footer will be used.", "success")
+    return _redirect(f"/games/{game.id}")
+
+
 @router.get("/{game_id}/tickets.pdf")
 def tickets_pdf(
     request: Request,
     game_id: int,
     paper: str = "letter",
-    per_page: int = 2,
+    per_page: int = DEFAULT_PER_PAGE,
+    orientation: str = DEFAULT_ORIENTATION,
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
 ):
     """Every ticket in one PDF, numbered, ready to print and hand out."""
     game = owned_game(session, user, game_id)
-    if paper not in PAPER_SIZES or per_page not in TICKETS_PER_PAGE:
-        raise HTTPException(status_code=400, detail="Unsupported paper size or tickets-per-page value")
+    if paper not in PAPER_SIZES or per_page not in TICKETS_PER_PAGE or orientation not in ORIENTATIONS:
+        raise HTTPException(status_code=400, detail="Unsupported paper size, orientation or tickets-per-page value")
     tickets = session.exec(select(Ticket).where(Ticket.game_id == game.id).order_by(Ticket.number)).all()
     if not tickets:
         raise HTTPException(status_code=404, detail="This game has no tickets")
@@ -392,8 +423,10 @@ def tickets_pdf(
     ]
     settings = request.app.state.settings
     fonts = fonts_from_settings(settings)  # falls back to the built-in font if the configured one fails
-    brand = brand_style(session, settings, game.owner_id)
-    data = build_tickets_pdf(game.name, game.grid_size, sheets, paper=paper, per_page=per_page, fonts=fonts, brand=brand)
+    brand = with_footer(brand_style(session, settings, game.owner_id), game.ticket_footer)
+    data = build_tickets_pdf(
+        game.name, game.grid_size, sheets, paper=paper, per_page=per_page, orientation=orientation, fonts=fonts, brand=brand,
+    )
     filename = re.sub(r"[^A-Za-z0-9_-]+", "-", game.name).strip("-") or "game"
     return Response(
         content=data,

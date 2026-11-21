@@ -129,7 +129,7 @@ def preview_pdf(
     sheets = [(1, songs), (2, list(reversed(songs)))]
     try:
         data = build_tickets_pdf(
-            "Your game name", 5, sheets, paper=paper, per_page=2,
+            "Your game name", 5, sheets, paper=paper, per_page=2, orientation="landscape",
             fonts=fonts_from_settings(request.app.state.settings),
             brand=brand_style(session, request.app.state.settings, user.id),
         )

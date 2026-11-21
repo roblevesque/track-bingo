@@ -35,6 +35,7 @@ ADDITIVE_COLUMNS = {
         ("series_id", "INTEGER"),
         ("run_number", "INTEGER NOT NULL DEFAULT 1"),
         ("remote_code", "TEXT NOT NULL DEFAULT ''"),
+        ("ticket_footer", "TEXT NOT NULL DEFAULT ''"),
     ],
 }
 

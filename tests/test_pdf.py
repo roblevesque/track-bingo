@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from app.services.pdf import Fonts, build_tickets_pdf, fit_text, printable
+from app.services.pdf import BrandStyle, Fonts, build_tickets_pdf, fit_text, printable, with_footer
 from tests.conftest import add_user, create_game, game_id_from, login, new_player, seed_songs
 
 
@@ -75,3 +75,52 @@ def test_download_needs_the_owning_host(app, logged_in, tmp_path):
     other = new_player(app)
     login(other, "other")
     assert other.get(f"/games/{game_id}/tickets.pdf").status_code == 404
+
+
+def page_sizes(pdf):
+    return [tuple(float(v) for v in m.groups()) for m in re.finditer(rb"/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]", pdf)]
+
+
+def test_defaults_are_one_ticket_per_page_in_landscape():
+    pdf = build_tickets_pdf("Pub Night", 3, sheets(3))
+    assert page_count(pdf) == 3
+    sizes = page_sizes(pdf)
+    assert sizes and all(w > h for w, h in sizes)
+
+
+@pytest.mark.parametrize("paper", ["letter", "a4"])
+def test_portrait_is_still_available(paper):
+    pdf = build_tickets_pdf("Pub Night", 3, sheets(2), paper=paper, orientation="portrait")
+    sizes = page_sizes(pdf)
+    assert sizes and all(w < h for w, h in sizes)
+
+
+@pytest.mark.parametrize("per_page, pages", [(1, 5), (2, 3), (4, 2)])
+def test_landscape_page_counts(per_page, pages):
+    pdf = build_tickets_pdf("Pub Night", 3, sheets(5), per_page=per_page, orientation="landscape")
+    assert page_count(pdf) == pages
+
+
+def test_rejects_unknown_orientation():
+    with pytest.raises(ValueError):
+        build_tickets_pdf("X", 3, sheets(1), orientation="diagonal")
+
+
+def test_a_game_footer_replaces_the_brand_footer():
+    brand = BrandStyle(accent="#336699", header_text="Head", footer_text="Host footer")
+    out = with_footer(brand, "  Next week:   90s Night ")
+    assert out.footer_text == "Next week: 90s Night"
+    assert (out.accent, out.header_text) == ("#336699", "Head")
+
+
+def test_an_empty_game_footer_keeps_the_brand_footer():
+    brand = BrandStyle(footer_text="Host footer")
+    assert with_footer(brand, "") is brand
+    assert with_footer(brand, "   ") is brand
+    assert with_footer(None, "") is None
+
+
+def test_a_game_footer_works_with_no_branding_at_all():
+    out = with_footer(None, "Next week: Quiz Night")
+    assert out.footer_text == "Next week: Quiz Night" and out.accent is None
+    assert build_tickets_pdf("Pub Night", 3, sheets(1), brand=out).startswith(b"%PDF")

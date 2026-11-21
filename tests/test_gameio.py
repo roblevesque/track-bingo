@@ -33,6 +33,18 @@ def valid_manifest():
     return manifest_dict(make_bundle())
 
 
+def test_ticket_footer_round_trips_and_older_files_still_load():
+    bundle = make_bundle()
+    bundle.ticket_footer = "Next week: 90s Night"
+    manifest = json.loads(json.dumps(manifest_dict(bundle)))
+    assert parse_manifest(manifest).ticket_footer == "Next week: 90s Night"
+    del manifest["game"]["ticket_footer"]  # a file exported before this setting existed
+    assert parse_manifest(manifest).ticket_footer == ""
+    manifest["game"]["ticket_footer"] = "x" * 121
+    with pytest.raises(BundleError):
+        parse_manifest(manifest)
+
+
 def test_manifest_round_trip():
     original = make_bundle()
     parsed = parse_manifest(json.loads(json.dumps(manifest_dict(original))))

@@ -3,11 +3,11 @@
 Pure layout code (no database or web imports): it is handed plain data and returns bytes.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from io import BytesIO
 
 from reportlab.lib.colors import HexColor, black, gray
-from reportlab.lib.pagesizes import A4, letter, landscape
+from reportlab.lib.pagesizes import A4, letter
 from reportlab.lib.utils import ImageReader, simpleSplit
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen import canvas
@@ -15,7 +15,15 @@ from reportlab.pdfgen import canvas
 from app.services.branding import on_color
 
 PAPER_SIZES = {"letter": letter, "a4": A4}
-TICKETS_PER_PAGE = {1: (1, 1), 2: (1, 2), 4: (2, 2)}  # per page -> (columns, rows)
+ORIENTATIONS = ("landscape", "portrait")
+DEFAULT_ORIENTATION = "landscape"
+DEFAULT_PER_PAGE = 1
+# per page -> (columns, rows). Two tickets sit side by side on a landscape page and stacked on a portrait one.
+LAYOUTS = {
+    "portrait": {1: (1, 1), 2: (1, 2), 4: (2, 2)},
+    "landscape": {1: (1, 1), 2: (2, 1), 4: (2, 2)},
+}
+TICKETS_PER_PAGE = LAYOUTS["portrait"]  # the allowed counts (the same in either orientation)
 
 PAGE_MARGIN = 28
 TICKET_INSET = 8  # space between a ticket and the cut line around it
@@ -143,11 +151,13 @@ def _draw_ticket(c, x, y, w, h, *, game_name, number, size, cells, fonts, brand,
     c.drawRightString(x + w - 4, top - HEADER_HEIGHT + 8, number_text)
 
     footer = printable(brand.footer_text, fonts)
-    grid_bottom = y + (FOOTER_HEIGHT if footer else 0)
+    big = w > 480  # a ticket with a whole landscape page to itself has room for a more readable footer
+    footer_size, footer_height = (12, 24) if big else (8, FOOTER_HEIGHT)
+    grid_bottom = y + (footer_height if footer else 0)
     if footer:
         c.setFillColor(gray)
-        c.setFont(fonts.regular, 8)
-        c.drawCentredString(x + w / 2, y + 4, shorten(footer, fonts.regular, 8, w - 8))
+        c.setFont(fonts.regular, footer_size)
+        c.drawCentredString(x + w / 2, y + (7 if big else 4), shorten(footer, fonts.regular, footer_size, w - 8))
 
     grid_top = top - HEADER_HEIGHT
     cell_w = w / size
@@ -182,7 +192,8 @@ def build_tickets_pdf(
     tickets: list[tuple[int, list[tuple[str, str]]]],
     *,
     paper: str = "letter",
-    per_page: int = 2,
+    per_page: int = DEFAULT_PER_PAGE,
+    orientation: str = DEFAULT_ORIENTATION,
     fonts: Fonts | None = None,
     brand: BrandStyle | None = None,
 ) -> bytes:
@@ -193,19 +204,23 @@ def build_tickets_pdf(
         raise ValueError(f"unknown paper size {paper!r}")
     if per_page not in TICKETS_PER_PAGE:
         raise ValueError(f"tickets per page must be one of {sorted(TICKETS_PER_PAGE)}")
+    if orientation not in ORIENTATIONS:
+        raise ValueError(f"orientation must be one of {list(ORIENTATIONS)}")
     fonts = fonts or Fonts()
     brand = brand or BrandStyle()
     try:
         logo = ImageReader(BytesIO(brand.logo_png)) if brand.logo_png else None
     except Exception:  # an unreadable logo must never stop tickets from printing
         logo = None
-    page_h, page_w = PAPER_SIZES[paper]
-    cols, rows = TICKETS_PER_PAGE[per_page]
+    page_w, page_h = PAPER_SIZES[paper]
+    if orientation == "landscape":
+        page_w, page_h = max(page_w, page_h), min(page_w, page_h)
+    cols, rows = LAYOUTS[orientation][per_page]
     slot_w = (page_w - 2 * PAGE_MARGIN) / cols
     slot_h = (page_h - 2 * PAGE_MARGIN) / rows
 
     buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=landscape(PAPER_SIZES[paper]))
+    c = canvas.Canvas(buffer, pagesize=(page_w, page_h))
     c.setTitle(printable(f"{game_name} tickets", fonts))
     for index, (number, cells) in enumerate(tickets):
         slot = index % per_page
@@ -223,6 +238,14 @@ def build_tickets_pdf(
         )
     c.save()
     return buffer.getvalue()
+
+
+def with_footer(brand: BrandStyle | None, footer: str) -> BrandStyle | None:
+    """The brand with this game's own footer in place of the host's, if the game has one."""
+    footer = " ".join((footer or "").split())
+    if not footer:
+        return brand
+    return replace(brand or BrandStyle(), footer_text=footer)
 
 
 def fonts_from_settings(settings) -> Fonts:

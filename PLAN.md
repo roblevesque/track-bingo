@@ -30,7 +30,7 @@ In Music Bingo, the numbers of normal bingo are replaced by songs. Players liste
 | Interactivity | Vanilla ES modules + `fetch` (htmx wasn't needed) | Browsers run ES modules directly, so nothing needs compiling. |
 | Live updates | Server-Sent Events (SSE) | One-way server-to-player push is all bingo needs. Simpler than WebSockets. |
 | Database | SQLite via SQLAlchemy / SQLModel | Single file, no DB server. |
-| Printable tickets | reportlab (pure Python) | One numbered PDF of every ticket, Letter or A4, 1, 2 or 4 per page. |
+| Printable tickets | reportlab (pure Python) | One numbered PDF of every ticket, Letter or A4, landscape (default) or portrait, 1 (default), 2 or 4 per page. Each game can carry its own footer line. |
 | Tests | pytest | Unit tests for generator and checker. |
 
 **Run it:**
@@ -92,7 +92,7 @@ Build and unit-test the generator and checker first. They are the correctness co
 |---|---|
 | `User` (host) | username, password_hash, is_admin, can_create_games, is_active, must_change_password, token_version |
 | `Song` | owner, stored file, title, artist, tags, duration, start_ms, end_ms, sha256 |
-| `Game` | owner, name, code, status, grid_size, play_order, current_index, current_round, series_id, run_number |
+| `Game` | owner, name, code, status, grid_size, play_order, current_index, current_round, series_id, run_number, remote_code, ticket_footer |
 | `GameSong` | game, song (the song pool) |
 | `Ticket` | game, ticket number, cells (song ids, row-major, N x N) |
 | `Round` | game, number, name, mode (lines / full house), lines_required, rows, columns, diagonals |

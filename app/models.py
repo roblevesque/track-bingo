@@ -77,6 +77,7 @@ class Game(SQLModel, table=True):
     series_id: int | None = None
     run_number: int = 1
     remote_code: str = ""  # pairing code for the phone remote; empty means the remote is off
+    ticket_footer: str = ""  # printed at the foot of this game's tickets; empty falls back to the host's branding footer
     created_at: datetime = Field(default_factory=utcnow)
 
 

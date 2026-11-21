@@ -27,8 +27,9 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
 - **Sound effects:** one-click (or number-key) *Thinking*, *Win* and *Lose* sounds from the host console, for
   the moments around checking a claim.
 - **Background music:** play your whole library, shuffled and quiet, before and after the game.
-- **Printed tickets:** download every ticket as one numbered PDF, hand them out, and check a paper
-  ticket by number from the console.
+- **Printed tickets:** download every ticket as one numbered PDF (one landscape ticket per page by
+  default), hand them out, and check a paper ticket by number from the console. Each game can have its
+  own footer line, for example to announce next week's game.
 - **Ticket branding:** add your logo, an accent colour, and header and footer text from the web
   interface. They appear on the printed PDF and on the tickets players see.
 - **Users and permissions:** administrators add accounts (with a generated one-time password) and choose
@@ -101,8 +102,12 @@ whatever the app is called.
    from the console during play.
 4. **Branding (optional):** open **Branding** in the menu to add a logo, an accent colour and your own
    header and footer wording. Use *Preview as a PDF* to see how it prints. It applies to all your games.
-5. **Printed tickets (optional):** on the game page choose paper size and tickets per page, then
-   download the PDF. Each ticket is numbered.
+5. **Printed tickets (optional):** on the game page choose paper size, orientation and tickets per page
+   (the default is one ticket per page, landscape), then download the PDF. Each ticket is numbered.
+   Type a **footer line for this game's tickets** (for example *Next week: 90s Night, Thursday 7pm*) and
+   save it before downloading. It replaces the footer from your Branding page for this game only; leave it
+   empty to use the Branding footer. A game started with *Run again* begins with an empty footer, so last
+   week's announcement is never reprinted by accident. The footer is included in game exports.
 6. **Console:** open the host console and share the join code or the `/join/CODE` link. Players
    enter a team name and get a ticket.
 7. **Play:** press **Start game**, then **Next song** for each clip. The clip plays in the host's
