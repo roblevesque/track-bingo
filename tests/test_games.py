@@ -143,18 +143,46 @@ def test_games_require_login(client):
         assert client.get(path, follow_redirects=False).status_code == 303
 
 
-def test_hosts_cannot_touch_each_others_games(app, logged_in, tmp_path):
+def games_in(app):
+    with Session(app.state.engine) as session:
+        return session.exec(select(Game)).all()
+
+
+def test_every_host_sees_and_can_open_every_game(app, logged_in, tmp_path):
     ids = seed_songs(app, logged_in, tmp_path, 12)
     game_id = game_id_from(create_game(logged_in, ids))
-    round_id = rounds_of(app, game_id)[0].id
+    add_user(app, "other")
+    with TestClient(app) as other:
+        login(other, "other")
+        assert "Pub Night" in other.get("/games").text
+        assert other.get(f"/games/{game_id}").status_code == 200
+        assert other.get(f"/games/{game_id}/tickets/1").status_code == 200
+
+
+def test_only_the_creator_or_an_admin_can_delete_a_game(app, logged_in, tmp_path):
+    ids = seed_songs(app, logged_in, tmp_path, 12)  # logged_in is an administrator
+    admins_game = game_id_from(create_game(logged_in, ids, name="Admin game"))
     add_user(app, "other")
     with TestClient(app) as other:
         login(other, "other")
         token = csrf_token(other, "/games")
-        assert other.get(f"/games/{game_id}").status_code == 404
-        assert other.get(f"/games/{game_id}/tickets/1").status_code == 404
-        for path in (f"/games/{game_id}/delete", f"/games/{game_id}/rounds",
-                     f"/games/{game_id}/rounds/{round_id}", f"/games/{game_id}/rounds/{round_id}/delete"):
-            assert other.post(path, data={"csrf_token": token}).status_code == 404
-        assert "Pub Night" not in other.get("/games").text
-    assert len(rounds_of(app, game_id)) == 1
+        assert other.get(f"/games/{admins_game}").status_code == 200
+        assert f"/games/{admins_game}/delete" not in other.get(f"/games/{admins_game}").text  # no button offered
+        assert other.post(f"/games/{admins_game}/delete", data={"csrf_token": token}, follow_redirects=False).status_code == 303
+        assert len(games_in(app)) == 1  # refused: not the creator, not an admin
+        theirs = game_id_from(create_game(other, ids, name="Their game"))
+        assert other.get(f"/games/{theirs}").text.count(f"/games/{theirs}/delete") == 1
+        assert len(games_in(app)) == 2
+    # an administrator can delete someone else's game
+    logged_in.post(f"/games/{theirs}/delete", data={"csrf_token": csrf_token(logged_in, "/games")})
+    assert [g.name for g in games_in(app)] == ["Admin game"]
+
+
+def test_a_creator_can_delete_their_own_game(app, logged_in, tmp_path):
+    ids = seed_songs(app, logged_in, tmp_path, 12)
+    add_user(app, "other")
+    with TestClient(app) as other:
+        login(other, "other")
+        theirs = game_id_from(create_game(other, ids, name="Their game"))
+        other.post(f"/games/{theirs}/delete", data={"csrf_token": csrf_token(other, "/games")})
+    assert games_in(app) == []

@@ -119,7 +119,7 @@ def perform_import(session: Session, settings, user: User, bundle_path: Path) ->
     """Create a new game from a bundle. All or nothing: on any problem nothing is left behind."""
     with BundleReader(bundle_path, max_total_bytes=settings.max_import_bytes, max_clip_bytes=settings.max_upload_bytes) as reader:
         bundle = reader.bundle
-        library = list(session.exec(select(Song).where(Song.owner_id == user.id).order_by(Song.id)).all())
+        library = list(session.exec(select(Song).order_by(Song.id)).all())
         ensure_hashes(session, settings, library)
         by_hash: dict[str, list[Song]] = {}
         for existing_song in library:

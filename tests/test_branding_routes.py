@@ -83,12 +83,13 @@ def test_bad_logos_are_refused(app, logged_in):
     assert logo_files(app) == []
 
 
-def test_a_logo_belongs_to_its_host(app, logged_in):
-    save(logged_in, logo=("logo.png", png(), "image/png"))
+def test_branding_is_shared_by_every_host(app, logged_in):
+    save(logged_in, logo=("logo.png", png(), "image/png"), header_text="Iron Horse")
     add_user(app, "other")
     other = new_player(app)
     login(other, "other")
-    assert other.get("/branding/logo").status_code == 404
+    assert other.get("/branding/logo").status_code == 200
+    assert "Iron Horse" in other.get("/branding").text
 
 
 def test_players_see_the_accent_and_logo_only_when_branded(app, running_game):

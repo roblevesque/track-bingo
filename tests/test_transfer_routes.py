@@ -35,6 +35,14 @@ def titles_of(app, game_id):
         return [[songs[c] for c in t.cells] for t in tickets]
 
 
+def wipe(app, admin, game_id):
+    """Delete a game and its songs, as if the bundle were being imported on a fresh install."""
+    admin.post(f"/games/{game_id}/delete", data={"csrf_token": csrf_token(admin, "/games")})
+    for song in all_songs(app):
+        admin.post(f"/library/{song.id}/delete", data={"csrf_token": csrf_token(admin, "/library")})
+    assert all_songs(app) == []
+
+
 def second_host(app):
     add_user(app, "other")
     client = new_player(app)
@@ -79,9 +87,9 @@ def test_uploads_record_their_checksum(app, logged_in, tmp_path):
     assert song.sha256 == sha256_file(app.state.settings.clips_dir / song.filename)
 
 
-def test_only_the_owner_can_export(app, logged_in, tmp_path):
+def test_any_host_can_export(app, logged_in, tmp_path):
     game_id = make_game(app, logged_in, tmp_path)
-    assert second_host(app).get(f"/games/{game_id}/export").status_code == 404
+    assert second_host(app).get(f"/games/{game_id}/export").status_code == 200
 
 
 def test_import_into_another_account_recreates_the_game_with_the_same_tickets(app, logged_in, tmp_path):
@@ -93,12 +101,22 @@ def test_import_into_another_account_recreates_the_game_with_the_same_tickets(ap
     new_id = int(response.headers["location"].rsplit("/", 1)[1])
     with Session(app.state.engine) as session:
         old, new = session.get(Game, original), session.get(Game, new_id)
-        mine = session.exec(select(Song).where(Song.owner_id == new.owner_id)).all()
     assert new.owner_id != old.owner_id and new.code != old.code and new.status == "draft"
     assert (new.name, new.grid_size, new.series_id, new.run_number) == (old.name, old.grid_size, None, 1)
-    assert len(mine) == 12 and all(s.sha256 and (app.state.settings.clips_dir / s.filename).is_file() for s in mine)
+    assert len(all_songs(app)) == 12  # the library is shared, so the songs were found rather than added again
     assert titles_of(app, new_id) == titles_of(app, original)  # the very same tickets: printed copies still work
-    assert "12 song(s) added" in other.get(f"/games/{new_id}").text
+    assert "0 song(s) added to your library, 12 already there" in other.get(f"/games/{new_id}").text
+
+
+def test_importing_on_a_fresh_install_adds_the_songs(app, logged_in, tmp_path):
+    original = make_game(app, logged_in, tmp_path)
+    bundle = export(logged_in, original).content
+    wipe(app, logged_in, original)
+    response = upload_bundle(logged_in, bundle)
+    new_id = int(response.headers["location"].rsplit("/", 1)[1])
+    songs = all_songs(app)
+    assert len(songs) == 12 and all(s.sha256 and (app.state.settings.clips_dir / s.filename).is_file() for s in songs)
+    assert "12 song(s) added" in logged_in.get(f"/games/{new_id}").text
 
 
 def test_importing_your_own_export_reuses_the_songs_you_already_have(app, logged_in, tmp_path):
@@ -122,14 +140,15 @@ def test_an_export_without_audio_imports_where_the_songs_already_exist(app, logg
 def test_an_export_without_audio_fails_cleanly_where_the_songs_are_missing(app, logged_in, tmp_path):
     original = make_game(app, logged_in, tmp_path)
     bundle = export(logged_in, original, audio="0").content
+    wipe(app, logged_in, original)
     other = second_host(app)
     response = upload_bundle(other, bundle)
     assert response.headers["location"] == "/games"
     page = other.get("/games").text  # flash messages show once, so read the page once
     assert "Import failed" in page and "no audio for 12 song" in page
     with Session(app.state.engine) as session:
-        assert len(session.exec(select(Game)).all()) == 1  # nothing was created
-        assert session.exec(select(Song).where(Song.owner_id != 1)).all() == []
+        assert session.exec(select(Game)).all() == []  # nothing was created
+        assert session.exec(select(Song)).all() == []
     assert not [p for p in app.state.settings.clips_dir.iterdir() if p.name not in {s.filename for s in all_songs(app)}]
 
 
@@ -155,11 +174,12 @@ def test_a_tampered_audio_file_is_caught_by_its_checksum(app, logged_in, tmp_pat
         for item in source.infolist():
             data = source.read(item)
             out.writestr(item.filename, data + b"tampered" if item.filename == "clips/0.mp3" else data)
+    wipe(app, logged_in, original)  # on a fresh install the tampered clip would have to be used
     other = second_host(app)
     assert upload_bundle(other, tampered.getvalue()).headers["location"] == "/games"
     with Session(app.state.engine) as session:
-        assert len(session.exec(select(Game)).all()) == 1
-        assert session.exec(select(Song).where(Song.owner_id != 1)).all() == []  # rolled back, nothing half-imported
+        assert session.exec(select(Game)).all() == []
+        assert session.exec(select(Song)).all() == []  # rolled back, nothing half-imported
 
 
 def test_the_size_limit_applies(app, logged_in, tmp_path):

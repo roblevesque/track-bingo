@@ -54,16 +54,16 @@ def test_an_overlong_footer_is_refused_and_nothing_changes(app, logged_in, tmp_p
     assert footer_of(app, game_id) == "x" * 120
 
 
-def test_only_the_owner_can_set_it(app, logged_in, tmp_path):
+def test_any_host_can_set_it_but_logging_in_is_required(app, logged_in, tmp_path):
     game_id = make_game(app, logged_in, tmp_path)
-    token = csrf_token(logged_in, f"/games/{game_id}")
+    anonymous = new_player(app)
+    assert anonymous.post(f"/games/{game_id}/ticket-footer", data={"ticket_footer": "x"}, follow_redirects=False).status_code in (303, 400, 403)
+    assert footer_of(app, game_id) == ""
     add_user(app, "other")
     other = new_player(app)
     login(other, "other")
-    response = other.post(f"/games/{game_id}/ticket-footer", data={"ticket_footer": "hijack", "csrf_token": csrf_token(other, "/games")})
-    assert response.status_code == 404
-    assert footer_of(app, game_id) == ""
-    assert token  # the owner's page still renders for them
+    assert set_footer(other, game_id, "Next week: Quiz Night").status_code == 303
+    assert footer_of(app, game_id) == "Next week: Quiz Night"
 
 
 def test_it_needs_a_csrf_token(app, logged_in, tmp_path):

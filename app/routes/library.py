@@ -37,8 +37,9 @@ def _redirect(url: str) -> RedirectResponse:
 
 
 def owned_song(session: Session, user: User, song_id: int) -> Song:
+    """Any signed-in host can use and edit any song: the library is shared."""
     song = session.get(Song, song_id)
-    if song is None or song.owner_id != user.id:
+    if song is None:
         raise HTTPException(status_code=404, detail="Song not found")
     return song
 
@@ -54,7 +55,7 @@ def library(
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
 ):
-    stmt = select(Song).where(Song.owner_id == user.id).order_by(func.lower(Song.title), Song.id)
+    stmt = select(Song).order_by(func.lower(Song.title), Song.id)
     needle = q.strip().lower()[:100]
     if needle:
         stmt = stmt.where(
@@ -220,6 +221,9 @@ def delete_song(
 ):
     check_csrf(request, csrf_token)
     song = owned_song(session, user, song_id)
+    if not (user.is_admin or song.owner_id == user.id):
+        flash(request, "Only the person who uploaded a song, or an administrator, can delete it.", "error")
+        return _redirect("/library")
     used_in = session.exec(
         select(Game.name).join(GameSong, GameSong.game_id == Game.id).where(GameSong.song_id == song.id)
     ).all()

@@ -302,11 +302,16 @@ menu to:
 - **Add an account.** A random password is generated and shown once, for you to pass on. The new user
   must choose their own at first login.
 - **Set permissions.** *Can create games* covers creating, importing and running a game again;
-  without it a user can still use the library and branding and run any games they already have.
+  without it a user can still use the library and branding and run any existing game.
   *Administrator* lets a user manage accounts.
 - **Reset a password** (a new temporary one is shown once and the user is signed out everywhere), or
   **disable** an account (it can't log in, and open sessions end). Accounts can't be deleted, so that the
   songs and games they own are never lost.
+
+**Everything is shared.** Every account sees the same games, song library and branding, and can open,
+run, print and edit any of them, so a second person can take over a game the first one set up. The one
+restriction is deleting: a game or a song can be deleted only by the account that created it or by an
+administrator.
 
 The last active administrator can't be demoted or disabled, which keeps you from locking everyone out.
 Anyone can change their own password from **Account** (their name in the header); that signs out their
@@ -429,7 +434,7 @@ so an existing `data/bingo.db3` keeps working. Add Alembic before real users dep
 - Accounts can be disabled but not deleted, and there is no email-based password recovery.
 - A song that is in a game's pool can't be deleted from the library until that game is deleted.
   Rounds that have been played, or are in play, can't be deleted.
-- Branding belongs to the host account and applies to all of that host's games. Logos are shrunk to
+- Branding is shared by every account and applies to all games. Logos are shrunk to
   at most 600 pixels, and the PDF header and footer text use the same built-in font as the tickets.
 - Grids larger than about 6×6 are cramped on a phone.
 

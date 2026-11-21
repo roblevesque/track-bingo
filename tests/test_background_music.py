@@ -22,22 +22,21 @@ def test_it_covers_the_library_not_just_the_games_song_pool(app, logged_in, tmp_
     assert len(tracks(logged_in, game_id)) == 12
 
 
-def test_a_host_only_gets_their_own_songs(app, logged_in, tmp_path):
-    seed_songs(app, logged_in, tmp_path, 12)
+def test_every_host_gets_the_whole_shared_library(app, logged_in, tmp_path):
+    ids = seed_songs(app, logged_in, tmp_path, 12)
     add_user(app, "other")
     other = new_player(app)
     login(other, "other")
-    theirs = seed_songs(app, other, tmp_path, 12)[12:]
-    other_game = game_id_from(create_game(other, theirs, grid_size=3, tickets=2))
-    assert {t["id"] for t in tracks(other, other_game)} == set(theirs)
+    other_game = game_id_from(create_game(other, ids[:10], grid_size=3, tickets=2))
+    assert {t["id"] for t in tracks(other, other_game)} == set(ids)
 
 
-def test_another_hosts_game_is_off_limits_and_login_is_required(app, running_game):
+def test_another_host_can_use_the_game_and_login_is_required(app, running_game):
     host, game_id, _code = running_game
     add_user(app, "other")
     other = new_player(app)
     login(other, "other")
-    assert other.get(f"/games/{game_id}/run/background").status_code == 404
+    assert other.get(f"/games/{game_id}/run/background").status_code == 200
     assert new_player(app).get(f"/games/{game_id}/run/background", follow_redirects=False).status_code == 303
 
 

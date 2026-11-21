@@ -40,11 +40,13 @@
         <td class="hide-sm">{{ song.duration_ms|clock if song.duration_ms else '' }}</td>
         <td class="actions">
           <a href="/library/{{ song.id }}/edit">Edit</a>
+          {% if user.is_admin or song.owner_id == user.id %}
           <form method="post" action="/library/{{ song.id }}/delete" class="inline"
                 data-confirm="Delete &ldquo;{{ song.title }}&rdquo;? This also removes the audio file.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button class="link danger" type="submit">Delete</button>
           </form>
+          {% endif %}
         </td>
       </tr>
     {% endfor %}

@@ -67,14 +67,14 @@ def test_download_route(app, logged_in, tmp_path):
     assert "tickets.pdf" in logged_in.get(f"/games/{game_id}").text
 
 
-def test_download_needs_the_owning_host(app, logged_in, tmp_path):
+def test_download_needs_a_login_but_any_host_may_print(app, logged_in, tmp_path):
     ids = seed_songs(app, logged_in, tmp_path, 12)
     game_id = game_id_from(create_game(logged_in, ids, grid_size=3))
     assert new_player(app).get(f"/games/{game_id}/tickets.pdf", follow_redirects=False).status_code == 303
     add_user(app, "other")
     other = new_player(app)
     login(other, "other")
-    assert other.get(f"/games/{game_id}/tickets.pdf").status_code == 404
+    assert other.get(f"/games/{game_id}/tickets.pdf").status_code == 200
 
 
 def page_sizes(pdf):

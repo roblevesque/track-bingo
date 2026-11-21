@@ -93,14 +93,18 @@ def test_delete_removes_row_and_file(app, logged_in, tmp_path):
     assert not path.exists()
 
 
-def test_hosts_cannot_touch_each_others_songs(app, logged_in, tmp_path):
-    song = _add_song(app, logged_in, tmp_path)
+def test_the_library_is_shared_but_only_the_uploader_or_an_admin_can_delete(app, logged_in, tmp_path):
+    song = _add_song(app, logged_in, tmp_path)  # uploaded by an administrator
     add_user(app, "other")
     with TestClient(app) as other:
         login(other, "other")
-        assert other.get(f"/library/{song.id}/edit").status_code == 404
-        assert other.get(f"/library/{song.id}/audio").status_code == 404
-        response = other.post(f"/library/{song.id}/delete",
-                              data={"csrf_token": csrf_token(other, "/library")})
-        assert response.status_code == 404
-    assert len(all_songs(app)) == 1
+        assert song.title in other.get("/library").text
+        assert other.get(f"/library/{song.id}/edit").status_code == 200
+        assert other.get(f"/library/{song.id}/audio").status_code == 200
+        assert f"/library/{song.id}/delete" not in other.get("/library").text
+        response = other.post(f"/library/{song.id}/delete", data={"csrf_token": csrf_token(other, "/library")},
+                              follow_redirects=False)
+        assert response.status_code == 303
+    assert len(all_songs(app)) == 1  # refused
+    logged_in.post(f"/library/{song.id}/delete", data={"csrf_token": csrf_token(logged_in, "/library")})
+    assert all_songs(app) == []

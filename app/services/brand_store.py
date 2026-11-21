@@ -7,8 +7,10 @@ from app.services.branding import on_color
 from app.services.pdf import BrandStyle
 
 
-def branding_row(session: Session, owner_id: int) -> Branding | None:
-    return session.exec(select(Branding).where(Branding.owner_id == owner_id)).first()
+def branding_row(session: Session, owner_id: int | None = None) -> Branding | None:
+    """Branding is shared by every host account, so there is one row: the oldest.
+    `owner_id` is accepted so callers needn't change, but it no longer selects anything."""
+    return session.exec(select(Branding).order_by(Branding.id)).first()
 
 
 def logo_path(settings, row: Branding | None):

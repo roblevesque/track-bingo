@@ -64,7 +64,7 @@ Or in Docker: `docker compose up --build`.
 - [ ] Remaining playlist visible from host console, not just next up
 - [ ] Related to above perhaps, but host console more completely and effectively using screen real estate
 - [X] Game import/export
-- [X] Permissions model to allow some users to add more users, or deny others the abillity to create games
+- [X] Permissions model to allow some users to add more users, or deny others the abillity to create games (all accounts share one library, game list and branding; only a creator or an admin can delete)
 - [X] Host triggerable sfx events (built-in win, lose and thinking sounds). For example, 'thinking' music while checking tickets, win and lose sfx. 
 - [ ] Configurable sound effects: choose from an assortment, or upload your own
 - [X] Pre and post game music playing (plays the host's whole library, shuffled; a commercial service was left out). Possibly from commercial service, or from pool of music already available. 

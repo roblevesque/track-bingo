@@ -85,7 +85,7 @@ def background_tracks(
 ):
     """The host's whole library in a fresh random order, for background music before and after a game."""
     owned_game(session, user, game_id)  # only the game's owner may ask
-    library = {s.id: s for s in session.exec(select(Song).where(Song.owner_id == user.id)).all()}
+    library = {s.id: s for s in session.exec(select(Song)).all()}
     order = new_play_order(list(library))[:1000]
     return {"songs": [
         {"id": sid, "title": library[sid].title, "artist": library[sid].artist, "audio_url": audio_url(sid)} for sid in order

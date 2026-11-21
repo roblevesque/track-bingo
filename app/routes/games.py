@@ -36,9 +36,15 @@ def _redirect(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=303)
 
 
+def can_delete(user: User, owner_id: int) -> bool:
+    """Games and songs are shared by every host account, but only their creator or an administrator may delete them."""
+    return bool(user.is_admin) or owner_id == user.id
+
+
 def owned_game(session: Session, user: User, game_id: int) -> Game:
+    """Any signed-in host can open and run any game (the name is historical: games used to be per-host)."""
     game = session.get(Game, game_id)
-    if game is None or game.owner_id != user.id:
+    if game is None:
         raise HTTPException(status_code=404, detail="Game not found")
     return game
 
@@ -52,7 +58,7 @@ def _new_code(session: Session) -> str:
 
 
 def _library(session: Session, user: User) -> list[Song]:
-    return session.exec(select(Song).where(Song.owner_id == user.id).order_by(func.lower(Song.title), Song.id)).all()
+    return session.exec(select(Song).order_by(func.lower(Song.title), Song.id)).all()
 
 
 # ---------------------------------------------------------------- list / create
@@ -60,7 +66,7 @@ def _library(session: Session, user: User) -> list[Song]:
 
 @router.get("")
 def games_list(request: Request, user: User = Depends(require_user), session: Session = Depends(get_session)):
-    every_run = session.exec(select(Game).where(Game.owner_id == user.id).order_by(Game.created_at.desc())).all()
+    every_run = session.exec(select(Game).order_by(Game.created_at.desc())).all()
     games, run_counts = latest_runs(every_run)  # re-running a game doesn't add rows to the list
     ids = [game.id for game in games]
     tickets = dict(
@@ -132,8 +138,8 @@ async def new_game_submit(
         count = DEFAULT_TICKETS
         errors.append(f"Number of tickets must be a whole number from 1 to {MAX_TICKETS}.")
 
-    # Only songs from this host's own library can go in the pool.
-    owned = {sid for sid in session.exec(select(Song.id).where(Song.owner_id == user.id)).all()}
+    # Only songs that exist in the (shared) library can go in the pool.
+    owned = {sid for sid in session.exec(select(Song.id)).all()}
     pool = [sid for sid in dict.fromkeys(song_ids) if sid in owned]
 
     generated = None
@@ -178,7 +184,7 @@ def game_detail(
     key = series_key(game)
     other_runs = session.exec(
         select(Game)
-        .where(or_(Game.id == key, Game.series_id == key), Game.owner_id == user.id, Game.id != game.id)
+        .where(or_(Game.id == key, Game.series_id == key), Game.id != game.id)
         .order_by(Game.run_number.desc())
     ).all()
     return render(
@@ -192,6 +198,7 @@ def game_detail(
         team_count=team_count,
         other_runs=other_runs,
         max_lines=2 * game.grid_size + 2,
+        can_delete=can_delete(user, game.owner_id),
     )
 
 
@@ -205,6 +212,9 @@ def delete_game(
 ):
     check_csrf(request, csrf_token)
     game = owned_game(session, user, game_id)
+    if not can_delete(user, game.owner_id):
+        flash(request, "Only the person who created a game, or an administrator, can delete it.", "error")
+        return _redirect(f"/games/{game.id}")
     for model in (Claim, Team, Ticket, Round, GameSong):  # children first
         session.execute(delete(model).where(model.game_id == game.id))
     session.delete(game)
@@ -454,7 +464,7 @@ def rerun_game(
 
     key = series_key(source)
     latest = session.exec(
-        select(func.max(Game.run_number)).where(or_(Game.id == key, Game.series_id == key), Game.owner_id == user.id)
+        select(func.max(Game.run_number)).where(or_(Game.id == key, Game.series_id == key))
     ).one() or 1
     pool = list(session.exec(select(GameSong.song_id).where(GameSong.game_id == source.id)).all())
     old_tickets = session.exec(select(Ticket).where(Ticket.game_id == source.id).order_by(Ticket.number)).all()

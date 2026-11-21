@@ -24,11 +24,13 @@
 <p><a href="/games">&larr; Games</a></p>
 <div class="row spread">
   <h1>{{ game.name }}{% if game.run_number > 1 or other_runs %} <span class="muted">run {{ game.run_number }}</span>{% endif %}</h1>
+  {% if can_delete %}
   <form method="post" action="/games/{{ game.id }}/delete" class="inline"
         data-confirm="Delete this game and all of its tickets?">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <button class="link danger" type="submit">{{ 'Delete this run' if other_runs else 'Delete game' }}</button>
   </form>
+  {% endif %}
 </div>
 
 <section class="card">

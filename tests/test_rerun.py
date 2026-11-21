@@ -81,10 +81,12 @@ def test_the_game_list_shows_one_row_per_game(app, running_game):
     host_post(host, second, "finish")
     third = game_id_from(rerun(host, second))
     assert get_game(app, third).run_number == 3 and get_game(app, third).series_id == game_id
-    
+
     listing = host.get("/games").text
+    # Count table rows rather than the game's name: a flash message may mention the name too.
     assert listing.count('<td><a href="/games/') == 1
     assert f'href="/games/{third}"' in listing and "run 3 of 3" in listing
+    assert f'href="/games/{game_id}"' not in listing
 
     page = host.get(f"/games/{third}").text  # history lives on the game page
     assert f'href="/games/{game_id}"' in page and f'href="/games/{second}"' in page and "Delete this run" in page
@@ -107,12 +109,14 @@ def test_songs_in_a_rerun_game_are_named_once_in_the_delete_warning(app, running
     assert "in the song pool of" in response.text and response.text.count("Pub Night") == 1
 
 
-def test_only_the_owner_can_rerun(app, running_game):
+def test_any_host_can_rerun_and_owns_the_new_run(app, running_game):
     host, game_id = finished_game(running_game)
-    add_user(app, "other")
+    other_id = add_user(app, "other")
     other = new_player(app)
     login(other, "other")
-    assert other.post(f"/games/{game_id}/rerun", data={"csrf_token": csrf_token(other, "/games")}).status_code == 404
+    response = other.post(f"/games/{game_id}/rerun", data={"csrf_token": csrf_token(other, "/games")}, follow_redirects=False)
+    new_id = game_id_from(response)
+    assert get_game(app, new_id).owner_id == other_id
 
 
 def test_phase_3_databases_gain_the_series_columns(tmp_path):

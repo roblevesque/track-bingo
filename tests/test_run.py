@@ -9,15 +9,15 @@ from tests.conftest import (
 )
 
 
-def test_console_needs_the_owning_host(app, running_game):
+def test_console_needs_a_login_but_any_host_may_run_a_game(app, running_game):
     _host, game_id, _code = running_game
     anonymous = new_player(app)
     assert anonymous.get(f"/games/{game_id}/run", follow_redirects=False).status_code == 303
     add_user(app, "other")
     other = new_player(app)
     login(other, "other")
-    assert other.get(f"/games/{game_id}/run").status_code == 404
-    assert other.post(f"/games/{game_id}/run/next", data={"csrf_token": csrf_token(other, "/games")}).status_code == 404
+    assert other.get(f"/games/{game_id}/run").status_code == 200
+    assert other.get(f"/games/{game_id}/run/state").status_code == 200
 
 
 def test_actions_need_a_csrf_token(running_game):
