@@ -93,8 +93,8 @@ Low priority (done)
 - [X] QR code for the phone remote
 - [X] Song fun facts and notes for the host screen and phone remote
 
-Extra low
-- [ ] Suggest clip sections from the song name
+Extra low (done)
+- [X] Suggest clip sections (done by analysing the audio in the browser, `app/static/suggest.js`, since a title alone can't say where the chorus is)
 
 ---
 

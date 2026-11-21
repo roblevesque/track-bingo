@@ -43,6 +43,15 @@
     </div>
     <p><button type="button" id="preview">Preview play window</button></p>
 
+    <div class="suggest">
+      <p><button type="button" id="suggest" class="secondary">Suggest sections</button>
+        <span id="suggest-status" class="muted" role="status"></span></p>
+      <ol id="suggestions" class="plain suggestions"></ol>
+      <p class="muted">Listens to this song in your browser (nothing is uploaded) and offers the loudest parts that
+        repeat elsewhere in the song, which is usually the chorus. Sections are as long as the clip length below.
+        Treat them as a starting point and check them with Listen.</p>
+    </div>
+
     <div class="row">
       <label class="check">
         <input type="checkbox" name="auto_fill" id="auto-fill" {% if form.auto_fill %}checked{% endif %}>

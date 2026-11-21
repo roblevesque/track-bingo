@@ -116,6 +116,58 @@ function setupClipEditor() {
     windowEnd = parse(endInput.value);
     player.play();
   });
+
+  // Suggest sections: the browser decodes the audio, suggest.js finds loud parts that repeat (usually the chorus).
+  const suggestButton = document.querySelector("#suggest");
+  suggestButton?.addEventListener("click", async () => {
+    const status = document.querySelector("#suggest-status");
+    const list = document.querySelector("#suggestions");
+    suggestButton.disabled = true;
+    list.replaceChildren();
+    status.textContent = "Listening to the song\u2026";
+    try {
+      const { toMono, extractFeatures, suggestWindows } = await import("./suggest.js");
+      const response = await fetch(player.currentSrc || player.src);
+      if (!response.ok) throw new Error("download");
+      const Context = window.AudioContext || window.webkitAudioContext;
+      const context = new Context();
+      let decoded;
+      try { decoded = await context.decodeAudioData(await response.arrayBuffer()); } finally { context.close?.(); }
+      const channels = Array.from({ length: decoded.numberOfChannels }, (_, c) => decoded.getChannelData(c));
+      await new Promise((resolve) => setTimeout(resolve, 0)); // let "Listening" paint before the number crunching
+      const mono = toMono(channels, decoded.sampleRate);
+      const length = Number(lengthInput?.value) > 0 ? Number(lengthInput.value) : 30;
+      const found = suggestWindows(extractFeatures(mono.samples, mono.rate), length, 3);
+      if (!found.length) {
+        status.textContent = `This song is too short for a ${length}-second clip. Lower the clip length and try again.`;
+        return;
+      }
+      status.textContent = "";
+      found.forEach((section, index) => {
+        const likely = section.loud >= 0.6 && section.repeat >= 0.6;
+        const note = likely ? "loud and repeated, likely a chorus" : section.loud < 0.4 ? "repeated, but quiet" : "worth a listen";
+        const item = document.createElement("li");
+        item.append(`${index + 1}. ${format(section.start)} \u2013 ${format(section.end)} \u00b7 ${note} `);
+        const use = document.createElement("button");
+        use.type = "button"; use.textContent = "Use"; use.className = "secondary";
+        use.addEventListener("click", () => {
+          startInput.value = format(section.start);
+          endInput.value = duration > 0 && section.end >= duration ? "" : format(section.end);
+          delete startInput.dataset.auto; delete endInput.dataset.auto;
+          showPosition();
+        });
+        const listen = document.createElement("button");
+        listen.type = "button"; listen.textContent = "Listen"; listen.className = "secondary";
+        listen.addEventListener("click", () => { player.currentTime = section.start; windowEnd = section.end; player.play(); });
+        item.append(use, " ", listen);
+        list.append(item);
+      });
+    } catch (error) {
+      status.textContent = "Couldn't analyse this song in your browser. You can still set the start and end by hand.";
+    } finally {
+      suggestButton.disabled = false;
+    }
+  });
 }
 
 setupClipEditor();

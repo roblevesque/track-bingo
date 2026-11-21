@@ -237,3 +237,11 @@ def test_the_pairing_page_fills_in_a_scanned_code(app, running_game):
     code = host_post(host, game_id, "remote", mode="on").json()["remote"]["code"]
     html = new_player(app).get(f"/remote?code={code}").text
     assert f'value="{code}"' in html and "Tap Connect" in html
+
+
+def test_the_edit_page_offers_suggested_sections_and_serves_the_script(app, logged_in, tmp_path):
+    ids = seed_songs(app, logged_in, tmp_path, 1)
+    html = logged_in.get(f"/library/{ids[0]}/edit").text
+    assert 'id="suggest"' in html and 'id="suggestions"' in html
+    script = logged_in.get("/static/suggest.js")
+    assert script.status_code == 200 and "export function suggestWindows" in script.text

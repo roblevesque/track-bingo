@@ -219,3 +219,5 @@ main:has(.remote-page) { max-width: 520px; }
 .qr { display: block; width: 200px; max-width: 100%; height: auto; border-radius: 8px; margin: 0.5rem 0; background: #fff; }
 .fun-fact { background: var(--accent-soft, #eef0ff); border-left: 4px solid var(--accent, #5b4bdb); padding: 0.5rem 0.75rem; border-radius: 4px; margin: 0.5rem 0; }
 textarea { resize: vertical; min-height: 5rem; }
+.suggestions li { margin: 0.4rem 0; }
+.suggestions button { padding: 0.2rem 0.6rem; margin-left: 0.25rem; }

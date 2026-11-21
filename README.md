@@ -34,6 +34,10 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   song and fade in/out.
 - **Phone remote:** run the game from your phone: next song, pause, replay, sound effects, and a bingo alert.
   The console shows a QR code: scan it and the pairing code is filled in, so you only tap Connect.
+- **Suggested clip sections:** on a song's edit page, **Suggest sections** listens to the song in your browser
+  (nothing is uploaded, no ffmpeg) and offers up to three clip-length sections that are loud and repeat elsewhere
+  in the song, which is usually the chorus. **Use** fills in the start and end, and **Listen** plays the section.
+  It is a starting point, not magic.
 - **Fun facts:** add a note to any song (on its edit page). While that song plays, only you see it, on the
   console and on the phone remote. Notes travel with exported games.
 - **Searching songs:** the library search and the new-game filter match every word. `!tag` leaves out songs
