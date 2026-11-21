@@ -105,6 +105,9 @@ whatever the app is called.
    length later, and capturing the end sets the start one clip length earlier. The default length is set on
    the Library page (30 seconds to begin with); the length box on the edit page is for that visit only, and
    the tick box is remembered per song, so a song that needs a different shape can opt out.
+   The same fill-in happens when you type a time: type a start and the end appears one clip length later
+   (or type an end and the start appears before it). A time you typed yourself is never overwritten; only a
+   value that was filled in automatically follows when you change the other end.
 2. **Games → New game:** choose the song pool, grid size and number of cards. Make at least as
    many cards as you expect teams. A pool of roughly twice the number of squares per card gives
    more varied cards, and the app tells you when cards end up closer than the 80% rule.

@@ -32,21 +32,43 @@ function setupClipEditor() {
   const lengthInput = document.querySelector("#clip-length");
   const duration = Number(player.dataset.duration || 0) / 1000; // 0 when unknown
 
+  // Setting one end (by capturing it or typing it) fills in the other end a clip-length away, kept
+  // inside the track. A value filled in this way is marked data-auto, so it is replaced when the first end
+  // changes again but a value you typed yourself is never overwritten.
+  function fillOther(isStart, seconds, overwrite) {
+    const length = Number(lengthInput?.value);
+    if (!autoFill?.checked || !Number.isFinite(length) || length <= 0 || !Number.isFinite(seconds)) return;
+    const other = isStart ? endInput : startInput;
+    if (!overwrite && other.value.trim() !== "" && other.dataset.auto !== "1") return;
+    if (isStart) {
+      const end = seconds + length;
+      other.value = duration > 0 && end >= duration ? "" : format(end); // blank = play to the end
+    } else {
+      other.value = format(Math.max(0, seconds - length));
+    }
+    other.dataset.auto = "1";
+  }
+
   document.querySelectorAll("[data-capture]").forEach((button) => {
     button.addEventListener("click", () => {
       const here = player.currentTime;
       const isStart = button.dataset.capture === "start";
-      (isStart ? startInput : endInput).value = format(here);
-      const length = Number(lengthInput?.value);
-      if (autoFill?.checked && Number.isFinite(length) && length > 0) {
-        // Capturing one end sets the other end a clip-length away, kept inside the track.
-        if (isStart) {
-          const end = here + length;
-          endInput.value = duration > 0 && end >= duration ? "" : format(end); // blank = play to the end
-        } else {
-          startInput.value = format(Math.max(0, here - length));
-        }
-      }
+      const target = isStart ? startInput : endInput;
+      target.value = format(here);
+      delete target.dataset.auto;
+      fillOther(isStart, here, true);
+      showPosition();
+    });
+  });
+
+  // Typing a time: your own entry is yours; the other end is filled in only if it is empty or was filled in
+  // automatically. "change" fires when you leave the box, so half-typed times aren't acted on.
+  [[startInput, true], [endInput, false]].forEach(([input, isStart]) => {
+    input.addEventListener("input", () => { delete input.dataset.auto; });
+    input.addEventListener("change", () => {
+      const seconds = parse(input.value);
+      if (seconds === null) return;
+      fillOther(isStart, seconds, false);
       showPosition();
     });
   });
