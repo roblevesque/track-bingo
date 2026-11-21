@@ -1,6 +1,7 @@
 """Song library: upload, search, edit metadata and play window, delete, stream audio."""
 
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
@@ -32,6 +33,12 @@ router = APIRouter(prefix="/library")
 
 MAX_TEXT = 200
 DURATION_SLACK_MS = 1000  # VBR MP3 durations are estimates
+
+
+def _library_url(q: str) -> str:
+    """The library page with the person's search still in place (only ever a search, never a free-form address)."""
+    q = q.strip()[:100]
+    return f"/library?q={quote(q)}" if q else "/library"
 
 
 def _redirect(url: str) -> RedirectResponse:
@@ -160,12 +167,13 @@ def _form_values(song: Song) -> dict[str, str]:
 def edit_form(
     request: Request,
     song_id: int,
+    q: str = "",
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
 ):
     song = owned_song(session, user, song_id)
     return render(request, "edit_song.html", user=user, song=song, form=_form_values(song), errors=[],
-                  clip_seconds=get_clip_seconds(session))
+                  clip_seconds=get_clip_seconds(session), q=q.strip()[:100])
 
 
 @router.post("/{song_id}/edit")
@@ -180,6 +188,7 @@ async def edit_submit(
     write_tags_to_file: bool = Form(False),
     auto_fill: bool = Form(False),
     fun_fact: str = Form(""),
+    q: str = Form(""),
     csrf_token: str = Form(""),
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
@@ -219,7 +228,7 @@ async def edit_submit(
         form = {"title": title, "artist": artist, "tags": tags, "start": start, "end": end, "auto_fill": auto_fill, "fun_fact": fun_fact}
         return render(
             request, "edit_song.html", status_code=400, user=user, song=song, form=form, errors=errors,
-            clip_seconds=get_clip_seconds(session),
+            clip_seconds=get_clip_seconds(session), q=q.strip()[:100],
         )
 
     if write_tags_to_file:
@@ -238,13 +247,14 @@ async def edit_submit(
     session.add(song)
     session.commit()
     flash(request, f"Saved \u201c{song.title}\u201d.", "success")
-    return _redirect("/library")
+    return _redirect(_library_url(q))
 
 
 @router.post("/{song_id}/delete")
 def delete_song(
     request: Request,
     song_id: int,
+    q: str = Form(""),
     csrf_token: str = Form(""),
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
@@ -253,19 +263,19 @@ def delete_song(
     song = owned_song(session, user, song_id)
     if not (user.is_admin or song.owner_id == user.id):
         flash(request, "Only the person who uploaded a song, or an administrator, can delete it.", "error")
-        return _redirect("/library")
+        return _redirect(_library_url(q))
     used_in = session.exec(
         select(Game.name).join(GameSong, GameSong.game_id == Game.id).where(GameSong.song_id == song.id)
     ).all()
     if used_in:
         names = ", ".join(f"\u201c{name}\u201d" for name in list(dict.fromkeys(used_in))[:3])
         flash(request, f"Can't delete \u201c{song.title}\u201d: it is in the song pool of {names}. Delete those games first.", "error")
-        return _redirect("/library")
+        return _redirect(_library_url(q))
     _clip_path(request, song).unlink(missing_ok=True)
     session.delete(song)
     session.commit()
     flash(request, "Song deleted.", "success")
-    return _redirect("/library")
+    return _redirect(_library_url(q))
 
 
 @router.get("/{song_id}/audio")

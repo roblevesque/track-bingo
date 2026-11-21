@@ -334,3 +334,29 @@ def test_games_count_towards_how_often_a_song_was_used(app, running_game):
         title, artist = song.title, song.artist
     html = planner_post(host, action="check", raw=f"{artist}\t{title}", role_0="artist", role_1="song", overuse="1").text
     assert "used in 1 game" in html and "heavily used" in html
+
+
+# ---------------------------------------------------------------- the library search survives editing
+
+def test_saving_or_deleting_a_song_returns_to_the_same_search(app, logged_in, tmp_path):
+    ids = seed_songs(app, logged_in, tmp_path, 2)
+    search = '!live "classic rock" & more'
+    html = logged_in.get("/library", params={"q": search}).text
+    assert f"/library/{ids[0]}/edit?q=" in html  # the Edit links remember the search
+    edit = logged_in.get(f"/library/{ids[0]}/edit", params={"q": search}).text
+    assert 'name="q"' in edit and "Back to library" in edit and "classic rock" in edit
+    saved = post(logged_in, f"/library/{ids[0]}/edit", f"/library/{ids[0]}/edit", title="T", artist="A", tags="x", q=search)
+    assert saved.status_code == 303
+    from urllib.parse import parse_qs, urlparse
+    location = urlparse(saved.headers["location"])
+    assert location.path == "/library" and parse_qs(location.query) == {"q": [search]}
+    plain = post(logged_in, f"/library/{ids[1]}/edit", f"/library/{ids[1]}/edit", title="U", artist="A", tags="")
+    assert plain.headers["location"] == "/library"
+    deleted = post(logged_in, f"/library/{ids[1]}/delete", "/library", q="tag one")
+    assert parse_qs(urlparse(deleted.headers["location"]).query) == {"q": ["tag one"]}
+
+
+def test_a_search_cannot_be_used_to_redirect_elsewhere(app, logged_in, tmp_path):
+    ids = seed_songs(app, logged_in, tmp_path, 1)
+    r = post(logged_in, f"/library/{ids[0]}/edit", f"/library/{ids[0]}/edit", title="T", artist="A", tags="", q="https://evil.example/")
+    assert r.headers["location"].startswith("/library?q=https%3A")
