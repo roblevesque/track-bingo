@@ -232,3 +232,8 @@ Phases 1 to 3 produce a playable game. Each phase ends with something runnable o
 Data model additions: `WinShape(name, size, cells)` global shapes; `Round.shapes_json` (a round's own copy of its shapes). Playlist edits go through `/games/{id}/playlist/*`.
 
 Low-tier additions: `Song.fun_fact`; `app/services/qr.py` (dependency-free QR encoder, SVG output, served from `/games/{id}/run/remote-qr.svg`); `app/services/search.py` (`!tag`, `no:tags`).
+
+### Playlist planner (from the host's idea)
+- [X] Step 1: check a pasted or uploaded sheet against the library, with tags, usage counts, close matches, artist-only rows, tag-the-matches and a songs-to-get list/CSV (`/planner`, `app/services/planner.py`, `app/services/sheets.py`)
+- [ ] Step 2: saved plans that update as songs are uploaded, with "create game from this plan"
+- [ ] Step 3: warn about likely duplicates when uploading songs

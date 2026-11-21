@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Planner &middot; {{ app_name }}{% endblock %}
+{% macro sheet_form(open_by_default) %}
+<form method="post" action="/planner" enctype="multipart/form-data" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Paste the cells from Excel
+    <textarea name="pasted" rows="6" placeholder="ABBA&#9;Dancing Queen&#10;Queen&#9;Killer Queen&#10;Prince"></textarea>
+  </label>
+  <label>&hellip;or choose a file (.xlsx or .csv)
+    <input type="file" name="sheet" accept=".xlsx,.csv,.txt,.tsv">
+  </label>
+  <p><button type="submit">Check against the library</button></p>
+</form>
+{% endmacro %}
+{% block content %}
+<h1>Playlist planner</h1>
+<p class="muted">Check a playlist sheet against your library before you go looking for songs. It shows what you already
+  have (with its tags and how often it has been used), what is close, and what you still need to get. Nothing is
+  changed unless you add a tag.</p>
+
+{% if results is none %}
+<section class="card">
+  <h2>Your sheet</h2>
+  {{ sheet_form(true) }}
+  <p class="muted">A row can have an artist and a song, or just an artist (meaning any song by them), or just a song.
+    The columns can be in either order and extra columns are fine: you can tell the planner which is which on the next
+    page. For a tidy start, use the template:
+    <a href="/planner/template.xlsx">Excel template</a> &middot; <a href="/planner/template.csv">CSV template</a>
+    (Artist in the first column, Song in the second).</p>
+</section>
+{% else %}
+
+<form method="post" action="/planner" id="plan-form" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="raw" value="{{ raw }}">
+
+  <section class="card">
+    <h2>Which column is which?</h2>
+    {% if guessed %}<p class="muted">This is a guess. Change any column that is wrong and press Re-check.</p>{% endif %}
+    <table class="plain-table">
+      <thead><tr><th>Column</th><th>Treat as</th><th>For example</th></tr></thead>
+      <tbody>
+      {% for c in columns %}
+        <tr>
+          <td>{{ c.letter }}</td>
+          <td><select name="role_{{ c.index }}" aria-label="What column {{ c.letter }} holds">
+            {% for value, label in [('artist','Artist'),('song','Song'),('ignore','Ignore')] %}
+            <option value="{{ value }}" {% if c.role == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select></td>
+          <td class="muted">{{ c.sample|join(', ') }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="row">
+      <label class="check"><input type="checkbox" name="has_header" value="1" {% if header %}checked{% endif %}>
+        The first row is a header</label>
+      <label>Flag songs used in at least
+        <input type="number" name="overuse" min="1" max="99" value="{{ overuse }}" style="width:5rem"> games</label>
+      <button type="submit" name="action" value="check" class="secondary">Re-check</button>
+    </div>
+  </section>
+
+  <section class="card" id="summary">
+    <h2>{{ row_count - (1 if header else 0) }} line{{ '' if row_count - (1 if header else 0) == 1 else 's' }} checked</h2>
+    <p>
+      <span class="badge have">{{ summary.have }} in the library</span>
+      <span class="badge maybe">{{ summary.maybe }} close</span>
+      <span class="badge artist">{{ summary.artist }} artist only, in the library</span>
+      <span class="badge need">{{ summary.need }} to get</span>
+      {% if summary.overused %}<span class="badge overused">{{ summary.overused }} heavily used</span>{% endif %}
+    </p>
+  </section>
+
+  {% if needs %}
+  <section class="card" id="to-get">
+    <h2>Songs to get</h2>
+    <pre id="to-get-text" class="to-get">{% for artist, song, note in needs %}{{ artist }}{% if artist and song %} &ndash; {% endif %}{{ song }}{% if note %}  ({{ note }}){% endif %}
+{% endfor %}</pre>
+    <div class="row">
+      <button type="button" class="secondary" data-copy="#to-get-text">Copy the list</button>
+      <button type="submit" name="action" value="csv" class="secondary">Download as CSV</button>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="card" id="results">
+    <h2>Line by line</h2>
+    <p class="muted">Tick songs you want to tag (songs already in the library are ticked for you). Tags are added to
+      the ones they already have.</p>
+    <div class="row tagbar">
+      <label>Tag to add <input name="tag" value="{{ tag }}" maxlength="40" placeholder="e.g. royalty night"></label>
+      <button type="submit" name="action" value="tag">Add the tag to the ticked songs</button>
+    </div>
+    <table class="plan">
+      <thead><tr><th>Sheet</th><th>Status</th><th>In your library</th></tr></thead>
+      <tbody>
+      {% for r in results %}
+        <tr class="status-{{ r.status }}">
+          <td>{% if r.row.artist %}{{ r.row.artist }}{% endif %}{% if r.row.artist and r.row.song %} &ndash; {% endif %}{{ r.row.song }}
+            {% if not r.row.song %}<span class="muted">(any song)</span>{% endif %}</td>
+          <td><span class="badge {{ r.status }}">{{ {'have':'In library','maybe':'Close match','artist':'Artist in library','need':'To get'}[r.status] }}</span>
+            {% if r.overused %}<span class="badge overused" title="Used in at least {{ overuse }} games">heavily used</span>{% endif %}</td>
+          <td>
+            {% for m in r.matches %}
+            <label class="check match">
+              <input type="checkbox" name="song_ids" value="{{ m.song.id }}" {% if r.status == 'have' and loop.first %}checked{% endif %}>
+              <span><strong>{{ m.song.title }}</strong>{% if m.song.artist %} &ndash; {{ m.song.artist }}{% endif %}
+                {% for t in m.song.tag_list %}<span class="tag">{{ t }}</span> {% endfor %}
+                <span class="muted">{{ usage[m.song.id] }}{% if m.note %} &middot; {{ m.note }}{% endif %}</span></span>
+            </label>
+            {% endfor %}
+            {% if r.alternatives %}
+            <p class="muted alt">Other songs by them: {% for s in r.alternatives %}{{ s.title }} ({{ s.uses }} game{{ '' if s.uses == 1 else 's' }}){{ ', ' if not loop.last }}{% endfor %}</p>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</form>
+
+<details class="card">
+  <summary>Check a different sheet</summary>
+  {{ sheet_form(false) }}
+</details>
+{% endif %}
+{% endblock %}

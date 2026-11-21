@@ -38,6 +38,12 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   (nothing is uploaded, no ffmpeg) and offers up to three clip-length sections that are loud and repeat elsewhere
   in the song, which is usually the chorus. **Use** fills in the start and end, and **Listen** plays the section.
   It is a starting point, not magic.
+- **Playlist planner:** paste the cells from an Excel playlist (or upload an .xlsx or CSV) and check it against the
+  library before shopping for songs. Each line comes back as *in the library* (with its tags and how many games it
+  has been in), *close match*, *artist in the library* (for a row that names only an artist) or *to get*. Columns
+  can be in either order: the planner guesses and you correct it with a dropdown. Songs used in 3 or more games
+  (adjustable) are flagged, with other songs by the same artist offered. Tick songs to add a theme tag in one go, and
+  copy or download the songs still to get as a list. There is an Excel and a CSV template (Artist, Song) on the page.
 - **Fun facts:** add a note to any song (on its edit page). While that song plays, only you see it, on the
   console and on the phone remote. Notes travel with exported games.
 - **Searching songs:** the library search and the new-game filter match every word. `!tag` leaves out songs

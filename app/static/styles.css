@@ -221,3 +221,17 @@ main:has(.remote-page) { max-width: 520px; }
 textarea { resize: vertical; min-height: 5rem; }
 .suggestions li { margin: 0.4rem 0; }
 .suggestions button { padding: 0.2rem 0.6rem; margin-left: 0.25rem; }
+
+table.plain-table { margin-top: 0.5rem; }
+table.plan td, table.plan th { vertical-align: top; text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
+.badge { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 999px; font-size: 0.85rem; border: 1px solid var(--border); margin: 0 0.25rem 0.25rem 0; }
+.badge.have { border-color: #2e9e5b; color: #2e9e5b; }
+.badge.maybe { border-color: #c98a00; color: #c98a00; }
+.badge.artist { border-color: var(--accent); color: var(--accent); }
+.badge.need { border-color: #d14b4b; color: #d14b4b; }
+.badge.overused { border-color: #8a5bd1; color: #8a5bd1; }
+.to-get { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem; margin: 0 0 0.6rem; max-height: 18rem; overflow: auto; font: inherit; }
+label.match { display: flex; gap: 0.5rem; align-items: flex-start; margin: 0.2rem 0; }
+label.match input { width: auto; margin-top: 0.25rem; }
+.tagbar { align-items: end; margin-bottom: 0.5rem; }
+details.card summary { cursor: pointer; font-weight: 600; }

@@ -6,6 +6,26 @@ document.addEventListener("submit", (event) => {
   if (message && !window.confirm(message)) event.preventDefault();
 });
 
+// Copy buttons: <button data-copy="#id"> copies the text of that element.
+document.addEventListener("click", async (event) => {
+  const button = event.target.closest?.("[data-copy]");
+  if (!button) return;
+  const source = document.querySelector(button.dataset.copy);
+  if (!source) return;
+  const original = button.textContent;
+  try {
+    await navigator.clipboard.writeText(source.textContent.trim());
+    button.textContent = "Copied";
+  } catch {
+    const range = document.createRange();  // no clipboard access (plain http): select it so Ctrl+C works
+    range.selectNodeContents(source);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    button.textContent = "Selected: press Ctrl+C";
+  }
+  setTimeout(() => { button.textContent = original; }, 2500);
+});
+
 // Clip editor: capture start/end from the player and preview the selected window.
 function setupClipEditor() {
   const player = document.querySelector("#clip-player");

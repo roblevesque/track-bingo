@@ -16,7 +16,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.config import Settings, load_settings
 from app.db import init_db, make_engine
 from app.deps import LoginRequired, PasswordChangeRequired
-from app.routes import auth, branding, games, library, play, playlist_edit, remote, run, shapes, transfer, users
+from app.routes import auth, branding, games, library, planner, play, playlist_edit, remote, run, shapes, transfer, users
 from app.services.events import Hub
 from app.services.remote import AttemptLimiter
 from app.web import BASE_DIR, error_page, flash
@@ -134,6 +134,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(users.router)
     app.include_router(branding.router)
     app.include_router(shapes.router)
+    app.include_router(planner.router)
     app.include_router(playlist_edit.router)
     app.include_router(run.router)
     app.include_router(remote.router)

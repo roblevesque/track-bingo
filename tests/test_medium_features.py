@@ -245,3 +245,92 @@ def test_the_edit_page_offers_suggested_sections_and_serves_the_script(app, logg
     assert 'id="suggest"' in html and 'id="suggestions"' in html
     script = logged_in.get("/static/suggest.js")
     assert script.status_code == 200 and "export function suggestWindows" in script.text
+
+
+# ---------------------------------------------------------------- planner
+
+def planner_post(client, **fields):
+    files = fields.pop("files", None)
+    data = {"csrf_token": csrf_token(client, "/planner")}
+    data.update(fields)
+    return client.post("/planner", data=data, files=files, follow_redirects=False)
+
+
+def titled(app, logged_in, tmp_path):
+    """Three songs: 'Dancing Queen' by ABBA (tagged 70s), 'Killer Queen' by Queen, 'Waterloo' by ABBA."""
+    ids = seed_songs(app, logged_in, tmp_path, 3)
+    for song_id, (title, artist, tags) in zip(ids, [("Dancing Queen", "ABBA", "70s"), ("Killer Queen", "Queen", ""), ("Waterloo", "ABBA", "")]):
+        post(logged_in, f"/library/{song_id}/edit", f"/library/{song_id}/edit", title=title, artist=artist, tags=tags)
+    return ids
+
+
+def test_the_planner_needs_a_login_and_offers_the_templates(app, logged_in, client):
+    page = logged_in.get("/planner")
+    assert page.status_code == 200 and "/planner/template.xlsx" in page.text and "/planner/template.csv" in page.text
+    csv_file = logged_in.get("/planner/template.csv")
+    assert csv_file.status_code == 200 and "Artist,Song" in csv_file.text and "attachment" in csv_file.headers["content-disposition"]
+    xlsx = logged_in.get("/planner/template.xlsx")
+    assert xlsx.status_code == 200 and xlsx.content[:2] == b"PK"
+    assert new_player(app).get("/planner", follow_redirects=False).status_code in (303, 401, 403)
+
+
+def test_a_pasted_sheet_is_checked_against_the_library(app, logged_in, tmp_path):
+    titled(app, logged_in, tmp_path)
+    r = planner_post(logged_in, action="check", pasted="Artist\tSong\nABBA\tdancing queen\nMadonna\tVogue\nQueen\n")
+    assert r.status_code == 200
+    html = r.text
+    assert "In library" in html and "To get" in html and "Artist in library" in html
+    assert "Madonna &ndash; Vogue" in html
+    assert 'name="role_0"' in html and 'name="has_header"' in html
+
+
+def test_an_uploaded_csv_works_and_bad_input_is_explained(app, logged_in, tmp_path):
+    titled(app, logged_in, tmp_path)
+    ok = planner_post(logged_in, action="check", files={"sheet": ("list.csv", b"Waterloo,ABBA\nVogue,Madonna\n", "text/csv")})
+    assert ok.status_code == 200 and "Waterloo" in ok.text
+    assert planner_post(logged_in, action="check").status_code == 400
+    bad = planner_post(logged_in, action="check", files={"sheet": ("list.xlsx", b"nope", "application/octet-stream")})
+    assert bad.status_code == 400 and "Excel" in bad.text
+
+
+def test_columns_can_be_corrected_on_the_second_pass(app, logged_in, tmp_path):
+    titled(app, logged_in, tmp_path)
+    raw = "Waterloo\tABBA\nVogue\tMadonna"
+    r = planner_post(logged_in, action="check", raw=raw, role_0="song", role_1="artist", overuse="3")
+    assert "1 in the library" in r.text and "1 to get" in r.text
+    swapped = planner_post(logged_in, action="check", raw=raw, role_0="artist", role_1="song", overuse="3")
+    assert "0 in the library" in swapped.text
+
+
+def test_ticked_songs_get_the_tag_and_the_page_shows_it(app, logged_in, tmp_path):
+    ids = titled(app, logged_in, tmp_path)
+    raw = "ABBA\tDancing Queen\nQueen\tKiller Queen"
+    r = planner_post(logged_in, action="tag", raw=raw, role_0="artist", role_1="song", tag="Royalty Night",
+                     song_ids=[str(ids[0]), str(ids[1])])
+    assert r.status_code == 200 and "Added the tag" in r.text and "royalty night" in r.text
+    with Session(app.state.engine) as session:
+        from app.models import Song
+        assert session.get(Song, ids[0]).tags == "70s,royalty night"
+        assert session.get(Song, ids[1]).tags == "royalty night"
+        assert session.get(Song, ids[2]).tags == ""
+    assert "Type the tag" in planner_post(logged_in, action="tag", raw=raw, role_0="artist", role_1="song", song_ids=[str(ids[0])]).text
+
+
+def test_the_songs_to_get_can_be_downloaded_as_csv(app, logged_in, tmp_path):
+    titled(app, logged_in, tmp_path)
+    r = planner_post(logged_in, action="csv", raw="ABBA\tWaterloo\nMadonna\tVogue\nPrince", role_0="artist", role_1="song")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
+    lines = r.text.lstrip("﻿").splitlines()
+    assert lines[0] == "Artist,Song,Note" and "Madonna,Vogue," in lines and "Prince,,any song by this artist" in lines
+    assert not any("Waterloo" in line for line in lines)
+
+
+def test_games_count_towards_how_often_a_song_was_used(app, running_game):
+    host, game_id, _ = running_game
+    song_id = pool_ids(app, game_id)[0]
+    with Session(app.state.engine) as session:
+        from app.models import Song
+        song = session.get(Song, song_id)
+        title, artist = song.title, song.artist
+    html = planner_post(host, action="check", raw=f"{artist}\t{title}", role_0="artist", role_1="song", overuse="1").text
+    assert "used in 1 game" in html and "heavily used" in html
