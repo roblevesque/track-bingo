@@ -13,7 +13,7 @@ from app.deps import require_user
 from app.models import Game, GameSong, Song, User
 from app.security import check_csrf
 from app.services.planner import (
-    DEFAULT_OVERUSE, HAVE, MAYBE, NEED, ROLES, LibSong, add_tag, build_rows, guess_mapping, match_rows,
+    ARTIST, DEFAULT_OVERUSE, HAVE, MAYBE, NEED, ROLES, LibSong, add_tag, build_rows, guess_mapping, match_rows,
     owned_list, shopping_list, summarize,
 )
 from app.services.sheets import (
