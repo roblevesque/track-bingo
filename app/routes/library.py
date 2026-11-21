@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from sqlalchemy import func, or_
 from sqlmodel import Session, select
 from starlette.concurrency import run_in_threadpool
@@ -24,6 +24,7 @@ from app.services.clips import (
 )
 from app.services.gameio import sha256_file
 from app.services.parsing import format_time_ms, normalize_tags, parse_time_ms
+from app.services.settings_store import get_clip_seconds, parse_clip_seconds, set_clip_seconds
 from app.web import flash, render
 
 router = APIRouter(prefix="/library")
@@ -67,19 +68,41 @@ def library(
             )
         )
     songs = session.exec(stmt).all()
-    return render(request, "library.html", user=user, songs=songs, q=q.strip())
+    return render(request, "library.html", user=user, songs=songs, q=q.strip(), clip_seconds=get_clip_seconds(session))
+
+
+@router.post("/clip-length")
+def set_default_clip_length(
+    request: Request,
+    clip_seconds: str = Form(""),
+    csrf_token: str = Form(""),
+    user: User = Depends(require_user),
+    session: Session = Depends(get_session),
+):
+    """The default clip length used to fill in the other end of a song's play window."""
+    check_csrf(request, csrf_token)
+    try:
+        seconds = parse_clip_seconds(clip_seconds)
+    except ValueError as exc:
+        flash(request, str(exc), "error")
+        return _redirect("/library")
+    set_clip_seconds(session, seconds)
+    flash(request, f"Default clip length set to {seconds} seconds.", "success")
+    return _redirect("/library")
 
 
 @router.post("/upload")
 async def upload(
     request: Request,
     files: list[UploadFile] = File(default=[]),
+    tags: str = Form(""),
     csrf_token: str = Form(""),
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
 ):
     check_csrf(request, csrf_token)
     settings = request.app.state.settings
+    upload_tags = normalize_tags(tags)  # applied to every song in this upload
     added = 0
     problems: list[str] = []
     for upload_file in files:
@@ -110,6 +133,7 @@ async def upload(
                 original_name=name,
                 title=(info.title or Path(name).stem)[:MAX_TEXT],
                 artist=info.artist[:MAX_TEXT],
+                tags=upload_tags,
                 duration_ms=info.duration_ms,
                 sha256=digest,
             )
@@ -122,6 +146,8 @@ async def upload(
         flash(request, problem, "error")
     if not added and not problems:
         flash(request, "Choose at least one file to upload.", "error")
+    if request.headers.get("x-requested-with") == "xhr":  # the progress-bar upload; the messages above show on the next page
+        return JSONResponse({"redirect": "/library"})
     return _redirect("/library")
 
 
@@ -132,6 +158,7 @@ def _form_values(song: Song) -> dict[str, str]:
         "tags": ", ".join(song.tag_list),
         "start": format_time_ms(song.start_ms) if song.start_ms else "",
         "end": format_time_ms(song.end_ms),
+        "auto_fill": song.auto_fill,
     }
 
 
@@ -143,7 +170,8 @@ def edit_form(
     session: Session = Depends(get_session),
 ):
     song = owned_song(session, user, song_id)
-    return render(request, "edit_song.html", user=user, song=song, form=_form_values(song), errors=[])
+    return render(request, "edit_song.html", user=user, song=song, form=_form_values(song), errors=[],
+                  clip_seconds=get_clip_seconds(session))
 
 
 @router.post("/{song_id}/edit")
@@ -156,6 +184,7 @@ async def edit_submit(
     start: str = Form(""),
     end: str = Form(""),
     write_tags_to_file: bool = Form(False),
+    auto_fill: bool = Form(False),
     csrf_token: str = Form(""),
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
@@ -189,9 +218,10 @@ async def edit_submit(
                 errors.append("End is beyond the end of the track.")
 
     if errors:
-        form = {"title": title, "artist": artist, "tags": tags, "start": start, "end": end}
+        form = {"title": title, "artist": artist, "tags": tags, "start": start, "end": end, "auto_fill": auto_fill}
         return render(
-            request, "edit_song.html", status_code=400, user=user, song=song, form=form, errors=errors
+            request, "edit_song.html", status_code=400, user=user, song=song, form=form, errors=errors,
+            clip_seconds=get_clip_seconds(session),
         )
 
     if write_tags_to_file:
@@ -205,6 +235,7 @@ async def edit_submit(
     song.title, song.artist = title, artist
     song.tags = normalize_tags(tags)
     song.start_ms, song.end_ms = start_ms, end_ms
+    song.auto_fill = auto_fill
     session.add(song)
     session.commit()
     flash(request, f"Saved \u201c{song.title}\u201d.", "success")

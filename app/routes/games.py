@@ -136,7 +136,7 @@ async def new_game_submit(
             raise ValueError
     except ValueError:
         count = DEFAULT_TICKETS
-        errors.append(f"Number of tickets must be a whole number from 1 to {MAX_TICKETS}.")
+        errors.append(f"Number of cards must be a whole number from 1 to {MAX_TICKETS}.")
 
     # Only songs that exist in the (shared) library can go in the pool.
     owned = {sid for sid in session.exec(select(Song.id)).all()}
@@ -161,7 +161,7 @@ async def new_game_submit(
     )
     session.commit()
 
-    message = f"Created \u201c{name}\u201d with {count} tickets. Any two tickets differ by at least {generated.min_difference} song(s)."
+    message = f"Created \u201c{name}\u201d with {count} cards. Any two cards differ by at least {generated.min_difference} song(s)."
     flash(request, message, "success")
     warning = variety_warning(generated.min_difference, size)
     if warning:
@@ -352,7 +352,7 @@ def delete_round(
 # ---------------------------------------------------------------- tickets
 
 
-@router.get("/{game_id}/tickets/{number}")
+@router.get("/{game_id}/cards/{number}")
 def ticket_view(
     request: Request,
     game_id: int,
@@ -363,7 +363,7 @@ def ticket_view(
     game = owned_game(session, user, game_id)
     ticket = session.exec(select(Ticket).where(Ticket.game_id == game.id, Ticket.number == number)).first()
     if ticket is None:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        raise HTTPException(status_code=404, detail="Card not found")
     songs = {s.id: s for s in session.exec(select(Song).where(Song.id.in_(ticket.cells))).all()}
     size = game.grid_size
     grid = [[songs.get(sid) for sid in ticket.cells[r * size:(r + 1) * size]] for r in range(size)]
@@ -384,7 +384,7 @@ def ticket_view(
 MAX_TICKET_FOOTER = 120
 
 
-@router.post("/{game_id}/ticket-footer")
+@router.post("/{game_id}/card-footer")
 def set_ticket_footer(
     request: Request,
     game_id: int,
@@ -399,16 +399,28 @@ def set_ticket_footer(
     game = owned_game(session, user, game_id)
     text = " ".join(ticket_footer.split())
     if len(text) > MAX_TICKET_FOOTER:
-        flash(request, f"The ticket footer can be at most {MAX_TICKET_FOOTER} characters.", "error")
+        flash(request, f"The card footer can be at most {MAX_TICKET_FOOTER} characters.", "error")
         return _redirect(f"/games/{game.id}")
     game.ticket_footer = text
     session.add(game)
     session.commit()
-    flash(request, "Ticket footer saved." if text else "Ticket footer cleared: the branding footer will be used.", "success")
+    flash(request, "Card footer saved." if text else "Card footer cleared: the branding footer will be used.", "success")
     return _redirect(f"/games/{game.id}")
 
 
+@router.get("/{game_id}/tickets/{number}")
+def old_card_url(game_id: int, number: int):
+    """Cards used to be called tickets; keep bookmarks to the old address working."""
+    return RedirectResponse(f"/games/{game_id}/cards/{number}", status_code=307)
+
+
 @router.get("/{game_id}/tickets.pdf")
+def old_cards_pdf_url(request: Request, game_id: int):
+    query = f"?{request.url.query}" if request.url.query else ""
+    return RedirectResponse(f"/games/{game_id}/cards.pdf{query}", status_code=307)
+
+
+@router.get("/{game_id}/cards.pdf")
 def tickets_pdf(
     request: Request,
     game_id: int,
@@ -421,10 +433,10 @@ def tickets_pdf(
     """Every ticket in one PDF, numbered, ready to print and hand out."""
     game = owned_game(session, user, game_id)
     if paper not in PAPER_SIZES or per_page not in TICKETS_PER_PAGE or orientation not in ORIENTATIONS:
-        raise HTTPException(status_code=400, detail="Unsupported paper size, orientation or tickets-per-page value")
+        raise HTTPException(status_code=400, detail="Unsupported paper size, orientation or cards-per-page value")
     tickets = session.exec(select(Ticket).where(Ticket.game_id == game.id).order_by(Ticket.number)).all()
     if not tickets:
-        raise HTTPException(status_code=404, detail="This game has no tickets")
+        raise HTTPException(status_code=404, detail="This game has no cards")
     wanted = {song_id for ticket in tickets for song_id in ticket.cells}
     songs = {s.id: s for s in session.exec(select(Song).where(Song.id.in_(wanted))).all()}
     sheets = [
@@ -441,7 +453,7 @@ def tickets_pdf(
     return Response(
         content=data,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}-tickets.pdf"', "Cache-Control": "no-store"},
+        headers={"Content-Disposition": f'attachment; filename="{filename}-cards.pdf"', "Cache-Control": "no-store"},
     )
 
 
@@ -495,7 +507,7 @@ def rerun_game(
     session.add_all(Ticket(game_id=game.id, number=number, cells=cells) for number, cells in tickets)
     session.commit()
 
-    how = "with new tickets" if regenerate else "with the same tickets, so printed copies still work"
+    how = "with new cards" if regenerate else "with the same cards, so printed copies still work"
     if warning:
         flash(request, warning, "info")
     flash(request, f"Run {game.run_number} of \u201c{game.name}\u201d is ready {how}. New join code: {game.code}", "success")

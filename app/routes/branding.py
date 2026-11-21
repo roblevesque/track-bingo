@@ -1,4 +1,4 @@
-"""Ticket branding: logo, accent colour, header and footer text."""
+"""Card branding: logo, accent colour, header and footer text."""
 
 import uuid
 
@@ -105,7 +105,7 @@ async def save_branding(
     session.commit()
     if old_logo and old_logo != row.logo_filename:
         (settings.branding_dir / old_logo).unlink(missing_ok=True)
-    flash(request, "Branding saved. It applies to printed tickets and to the tickets players see.", "success")
+    flash(request, "Branding saved. It applies to printed cards and to the cards players see.", "success")
     return _redirect("/branding")
 
 

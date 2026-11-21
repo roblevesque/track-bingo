@@ -248,7 +248,7 @@ async def check_ticket(request: Request, game_id: int, ticket_number: int = Form
     _require_active(game)
     ticket = session.exec(select(Ticket).where(Ticket.game_id == game.id, Ticket.number == ticket_number)).first()
     if ticket is None:
-        raise HTTPException(status_code=404, detail=f"There is no ticket number {ticket_number} in this game.")
+        raise HTTPException(status_code=404, detail=f"There is no card number {ticket_number} in this game.")
     current = session.exec(select(Round).where(Round.game_id == game.id, Round.number == game.current_round)).first()
     if current is None:
         raise _conflict("There is no round in progress.")

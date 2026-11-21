@@ -92,7 +92,7 @@ def _create_team(session: Session, game: Game, name: str) -> Team | str:
         taken = select(Team.ticket_id).where(Team.game_id == game.id)
         free = session.exec(select(Ticket.id).where(Ticket.game_id == game.id, Ticket.id.not_in(taken))).all()
         if not free:
-            return "Every ticket in this game has been taken."
+            return "Every card in this game has been taken."
         team = Team(game_id=game.id, ticket_id=random.choice(free), name=name, name_key=key)
         session.add(team)
         try:

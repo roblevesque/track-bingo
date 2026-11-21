@@ -200,7 +200,7 @@ def parse_manifest(data: object) -> GameBundle:
     if len(set(refs)) != len(refs):
         raise BundleError("Two songs share the same reference.")
     if size * size > len(songs):
-        raise BundleError(f"A {size}\u00d7{size} ticket needs at least {size * size} songs.")
+        raise BundleError(f"A {size}\u00d7{size} card needs at least {size * size} songs.")
 
     raw_rounds = data.get("rounds")
     if not isinstance(raw_rounds, list) or not 1 <= len(raw_rounds) <= MAX_ROUNDS:
@@ -224,22 +224,22 @@ def parse_manifest(data: object) -> GameBundle:
 
     raw_tickets = data.get("tickets")
     if not isinstance(raw_tickets, list) or not 1 <= len(raw_tickets) <= MAX_TICKETS:
-        raise BundleError(f"A game needs between 1 and {MAX_TICKETS} tickets.")
+        raise BundleError(f"A game needs between 1 and {MAX_TICKETS} cards.")
     known, tickets, numbers = set(refs), [], set()
     for raw in raw_tickets:
         if not isinstance(raw, dict):
-            raise BundleError("A ticket entry is malformed.")
+            raise BundleError("A card entry is malformed.")
         number = _int(raw.get("number"), "A ticket number", minimum=1)
         cells = raw.get("cells")
         if number in numbers:
-            raise BundleError(f"Ticket {number} appears twice.")
+            raise BundleError(f"Card {number} appears twice.")
         numbers.add(number)
         if not isinstance(cells, list) or len(cells) != size * size or not all(isinstance(c, int) and not isinstance(c, bool) for c in cells):
-            raise BundleError(f"Ticket {number} doesn't have {size * size} squares.")
+            raise BundleError(f"Card {number} doesn't have {size * size} squares.")
         if not set(cells) <= known:
-            raise BundleError(f"Ticket {number} uses a song that isn't in the game.")
+            raise BundleError(f"Card {number} uses a song that isn't in the game.")
         if len(set(cells)) != len(cells):
-            raise BundleError(f"Ticket {number} repeats a song.")
+            raise BundleError(f"Card {number} repeats a song.")
         tickets.append(TicketEntry(number=number, cells=list(cells)))
     tickets.sort(key=lambda t: t.number)
     return GameBundle(name=name, grid_size=size, songs=songs, rounds=rounds, tickets=tickets, ticket_footer=ticket_footer)

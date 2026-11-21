@@ -28,7 +28,7 @@ def test_public_pages_do_not_depend_on_the_host_header(client, path):
 def test_host_pages_do_not_depend_on_the_host_header(running_game):
     host, game_id, _code = running_game
     for path in ("/library", "/games", "/games/new", "/branding", "/users", "/account",
-                 f"/games/{game_id}", f"/games/{game_id}/run", f"/games/{game_id}/tickets/1"):
+                 f"/games/{game_id}", f"/games/{game_id}/run", f"/games/{game_id}/cards/1"):
         response = host.get(path, headers=ODD_HOST)
         assert response.status_code == 200, path
         check_page(response.text)

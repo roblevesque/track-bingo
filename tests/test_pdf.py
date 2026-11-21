@@ -56,25 +56,25 @@ def test_text_shrinks_to_fit_then_is_cut_with_an_ellipsis():
 def test_download_route(app, logged_in, tmp_path):
     ids = seed_songs(app, logged_in, tmp_path, 12)
     game_id = game_id_from(create_game(logged_in, ids, name="Pub Night!", grid_size=3, tickets=5))
-    response = logged_in.get(f"/games/{game_id}/tickets.pdf?paper=a4&per_page=2")
+    response = logged_in.get(f"/games/{game_id}/cards.pdf?paper=a4&per_page=2")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
-    assert response.headers["content-disposition"] == 'attachment; filename="Pub-Night-tickets.pdf"'
+    assert response.headers["content-disposition"] == 'attachment; filename="Pub-Night-cards.pdf"'
     assert response.content.startswith(b"%PDF") and page_count(response.content) == 3
-    assert logged_in.get(f"/games/{game_id}/tickets.pdf").status_code == 200  # defaults
-    assert logged_in.get(f"/games/{game_id}/tickets.pdf?per_page=3").status_code == 400
-    assert logged_in.get(f"/games/{game_id}/tickets.pdf?paper=tabloid").status_code == 400
-    assert "tickets.pdf" in logged_in.get(f"/games/{game_id}").text
+    assert logged_in.get(f"/games/{game_id}/cards.pdf").status_code == 200  # defaults
+    assert logged_in.get(f"/games/{game_id}/cards.pdf?per_page=3").status_code == 400
+    assert logged_in.get(f"/games/{game_id}/cards.pdf?paper=tabloid").status_code == 400
+    assert "cards.pdf" in logged_in.get(f"/games/{game_id}").text
 
 
 def test_download_needs_a_login_but_any_host_may_print(app, logged_in, tmp_path):
     ids = seed_songs(app, logged_in, tmp_path, 12)
     game_id = game_id_from(create_game(logged_in, ids, grid_size=3))
-    assert new_player(app).get(f"/games/{game_id}/tickets.pdf", follow_redirects=False).status_code == 303
+    assert new_player(app).get(f"/games/{game_id}/cards.pdf", follow_redirects=False).status_code == 303
     add_user(app, "other")
     other = new_player(app)
     login(other, "other")
-    assert other.get(f"/games/{game_id}/tickets.pdf").status_code == 200
+    assert other.get(f"/games/{game_id}/cards.pdf").status_code == 200
 
 
 def page_sizes(pdf):

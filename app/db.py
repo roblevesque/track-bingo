@@ -29,7 +29,7 @@ ADDITIVE_COLUMNS = {
         ("must_change_password", "INTEGER NOT NULL DEFAULT 0"),
         ("token_version", "INTEGER NOT NULL DEFAULT 0"),
     ],
-    "song": [("sha256", "TEXT NOT NULL DEFAULT ''")],
+    "song": [("sha256", "TEXT NOT NULL DEFAULT ''"), ("auto_fill", "INTEGER NOT NULL DEFAULT 1")],
     "game": [
         ("current_round", "INTEGER NOT NULL DEFAULT 1"),
         ("series_id", "INTEGER"),

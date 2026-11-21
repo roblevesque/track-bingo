@@ -38,13 +38,6 @@
       </section>
 
       <section class="card">
-        <h2>Now playing</h2>
-        <p><strong id="now-title">Nothing yet</strong> <span id="now-artist" class="muted"></span></p>
-        <p class="muted" id="progress"></p>
-        <p class="muted">Up next (only you can see this): <span id="next-title">&mdash;</span></p>
-      </section>
-
-      <section class="card">
         <h2>Sound effects</h2>
         <div id="effects" class="row"></div>
         <p class="muted" id="effects-hint">Number keys play the effects in the order shown; Esc stops one. An effect
@@ -108,13 +101,16 @@
     </div>
 
     <div class="console-col">
-      <section class="card">
-        <h2>Coming up <span id="upcoming-count" class="muted"></span></h2>
+      <section class="card" id="queue-card">
+        <h2>Now playing and coming up <span id="upcoming-count" class="muted"></span></h2>
+        <p class="muted" id="progress"></p>
         <ol id="upcoming" class="plain playlist scroll-list"><li class="muted">The play order is made when you start the game.</li></ol>
-        <details class="played-details" open>
-          <summary>Played so far <span id="played-count" class="muted"></span></summary>
-          <ol id="played" class="plain playlist scroll-list"></ol>
-        </details>
+        <p class="muted">Only you can see the titles on this page.</p>
+      </section>
+
+      <section class="card" id="played-card">
+        <h2>Played <span id="played-count" class="muted"></span></h2>
+        <ol id="played" class="plain playlist scroll-list"><li class="muted">Nothing has been played yet.</li></ol>
       </section>
 
       <section class="card" id="remote-card">
@@ -138,9 +134,9 @@
       </section>
 
       <section class="card">
-        <h2>Check a printed ticket</h2>
+        <h2>Check a printed card</h2>
         <form id="check-form" class="row">
-          <label>Ticket number <input name="ticket_number" type="number" min="1" required></label>
+          <label>Card number <input name="ticket_number" type="number" min="1" required></label>
           <button type="submit">Check</button>
         </form>
         <p id="check-result" class="flash" hidden></p>

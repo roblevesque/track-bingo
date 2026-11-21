@@ -52,7 +52,7 @@ if (root) {
     const banner = $("#r-win");
     banner.hidden = state.wins.length === 0;
     banner.textContent = state.wins.length
-      ? "Bingo called! " + state.wins.map((w) => `${w.team} (ticket ${w.ticket}, ${w.detail})`).join(" \u2022 ")
+      ? "Bingo called! " + state.wins.map((w) => `${w.team} (card ${w.ticket}, ${w.detail})`).join(" \u2022 ")
       : "";
 
     const signature = JSON.stringify(state.effects);

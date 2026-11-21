@@ -15,14 +15,14 @@
     <button type="submit">Import</button>
   </form>
   <p class="muted">Choose a <code>.musicbingo.zip</code> file exported from any {{ app_name }} install. You get a new
-    game with a new join code and the same tickets; songs already in your library are reused.</p>
+    game with a new join code and the same cards; songs already in your library are reused.</p>
 </section>
 {% endif %}
 <section class="card">
   {% if games %}
   <div class="scroll">
   <table>
-    <thead><tr><th>Name</th><th>Join code</th><th class="hide-sm">Grid</th><th class="hide-sm">Songs</th><th class="hide-sm">Tickets</th><th>Status</th></tr></thead>
+    <thead><tr><th>Name</th><th>Join code</th><th class="hide-sm">Grid</th><th class="hide-sm">Songs</th><th class="hide-sm">Cards</th><th>Status</th></tr></thead>
     <tbody>
     {% for game in games %}
       <tr>

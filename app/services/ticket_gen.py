@@ -48,18 +48,18 @@ def generate_tickets(
     if size < 2:
         raise ValueError("grid size must be at least 2")
     if count < 1:
-        raise ValueError("ticket count must be at least 1")
+        raise ValueError("card count must be at least 1")
     songs = list(dict.fromkeys(pool))  # de-duplicate, keep order
     cells = size * size
     if len(songs) < cells:
         raise PoolTooSmall(
-            f"A {size}x{size} ticket needs {cells} songs, but only {len(songs)} were selected."
+            f"A {size}x{size} card needs {cells} songs, but only {len(songs)} were selected."
         )
     possible = math.comb(len(songs), cells)
     if possible < count:
-        how_many = "Only 1 different ticket is" if possible == 1 else f"Only {possible} different tickets are"
+        how_many = "Only 1 different card is" if possible == 1 else f"Only {possible} different cards are"
         raise TooManyTickets(
-            f"{how_many} possible from {len(songs)} songs. Select more songs or ask for fewer tickets."
+            f"{how_many} possible from {len(songs)} songs. Select more songs or ask for fewer cards."
         )
 
     rng = rng or random.Random()
@@ -85,7 +85,7 @@ def generate_tickets(
             else:
                 if level == 1:
                     raise TooManyTickets(
-                        "Could not find enough different tickets. Select more songs or ask for fewer tickets."
+                        "Could not find enough different cards. Select more songs or ask for fewer cards."
                     )
                 level -= 1
         for i in chosen:
@@ -108,7 +108,7 @@ def variety_warning(min_difference: int, size: int) -> str | None:
     if min_difference >= target:
         return None
     return (
-        f"Some tickets share more than 80% of their songs: any two tickets differ by at least "
+        f"Some cards share more than 80% of their songs: any two cards differ by at least "
         f"{min_difference} of {size * size} squares, and the aim is {target}. A bigger song pool "
-        f"(about twice the number of squares on a ticket, or more) gives more varied tickets."
+        f"(about twice the number of squares on a card, or more) gives more varied cards."
     )

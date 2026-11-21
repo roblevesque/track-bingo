@@ -7,7 +7,9 @@
 {% for error in errors %}<p class="flash error">{{ error }}</p>{% endfor %}
 
 <section class="card">
-  <audio id="clip-player" controls preload="metadata" src="/library/{{ song.id }}/audio"></audio>
+  <audio id="clip-player" controls preload="metadata" src="/library/{{ song.id }}/audio"
+         data-duration="{{ song.duration_ms or 0 }}"></audio>
+  <p id="position" class="clip-position" aria-live="off">Position 0:00.0</p>
   <p class="muted">Use the player to find the best part, then capture the start and end points.
     The audio file itself is never changed; only the play window is saved.</p>
 
@@ -36,6 +38,19 @@
       <button type="button" data-capture="end">Use current position</button>
     </div>
     <p><button type="button" id="preview">Preview play window</button></p>
+
+    <div class="row">
+      <label class="check">
+        <input type="checkbox" name="auto_fill" id="auto-fill" {% if form.auto_fill %}checked{% endif %}>
+        Fill in the other end automatically
+      </label>
+      <label>Clip length (seconds)
+        <input type="number" id="clip-length" min="1" max="300" step="1" value="{{ clip_seconds }}">
+      </label>
+    </div>
+    <p class="muted">Capturing a start sets the end that many seconds later; capturing an end sets the start that many
+      seconds earlier. The length box is for this visit only; the default is set on the Library page. The tick box is
+      remembered for this song.</p>
 
     <label class="check">
       <input type="checkbox" name="write_tags_to_file" value="on">

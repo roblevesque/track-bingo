@@ -70,6 +70,32 @@ Or in Docker: `docker compose up --build`.
 - [X] Pre and post game music playing (plays the host's whole library, shuffled; a commercial service was left out). Possibly from commercial service, or from pool of music already available. 
 - [X] Host remote (pair a phone with a code; next song, pause, replay, skip, effects, bingo alert). Allow host to pause music, trigger events from mobile device
 
+### From the host's feature requests
+
+High priority (done)
+- [X] Upload with tags (one tag list applied to every file in an upload)
+- [X] Upload progress bar, with some pub humour while waiting
+- [X] Song edit page shows time since the clip start (and time left)
+- [X] Capturing one end of a clip fills in the other from a default clip length (global default, per-song opt-out)
+- [X] "Tickets" renamed "Cards" in all visible text and URLs (old addresses redirect)
+- [X] Console: now playing and coming up in one list with the current song highlighted, and a separate Played box
+
+Medium priority
+- [ ] "Select Shown" renamed "Select All"
+- [ ] Custom win shapes (L, T and so on), defined globally and ticked per round
+- [ ] Game name in card headers, possibly with variables such as `${GAME.NAME}` filled in safely
+- [ ] Playlist editable after the game is created
+- [ ] Optional "Start Game also starts the music" (on by default)
+- [ ] Background music excludes the current game's playlist
+
+Low priority
+- [ ] Inverse tag search (`!tag`) and a "no tags" search
+- [ ] QR code for the phone remote
+- [ ] Song fun facts and notes for the host screen and phone remote
+
+Extra low
+- [ ] Suggest clip sections from the song name
+
 ---
 
 ## 4. Core Game Logic
@@ -91,12 +117,13 @@ Build and unit-test the generator and checker first. They are the correctness co
 | Entity | Key fields |
 |---|---|
 | `User` (host) | username, password_hash, is_admin, can_create_games, is_active, must_change_password, token_version |
-| `Song` | owner, stored file, title, artist, tags, duration, start_ms, end_ms, sha256 |
+| `Song` | owner, stored file, title, artist, tags, duration, start_ms, end_ms, sha256, auto_fill |
 | `Game` | owner, name, code, status, grid_size, play_order, current_index, current_round, series_id, run_number, remote_code, ticket_footer |
 | `GameSong` | game, song (the song pool) |
 | `Ticket` | game, ticket number, cells (song ids, row-major, N x N) |
 | `Round` | game, number, name, mode (lines / full house), lines_required, rows, columns, diagonals |
 | `Team` | game, name, ticket, marks (replaces `Player`; no accounts, remembered by a signed cookie) |
+| `AppSetting` | key, value (site-wide settings; currently the default clip length) |
 | `Claim` | game, team, round, status (win / rejected), songs played at the time, detail, timestamp |
 
 ---

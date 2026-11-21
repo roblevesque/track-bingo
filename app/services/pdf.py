@@ -142,7 +142,7 @@ def _draw_ticket(c, x, y, w, h, *, game_name, number, size, cells, fonts, brand,
         c.drawImage(logo, left, top - HEADER_HEIGHT + (HEADER_HEIGHT - height) / 2, width=width, height=height, mask="auto")
         left += width + 6
 
-    number_text = f"Ticket {number}"
+    number_text = f"Card {number}"
     number_width = pdfmetrics.stringWidth(number_text, fonts.bold, 14)
     c.setFont(fonts.bold, 12)
     title = printable(brand.header_text, fonts) or game_name
@@ -199,11 +199,11 @@ def build_tickets_pdf(
 ) -> bytes:
     """tickets: [(ticket number, [(title, artist) per square, row-major]), ...]"""
     if not tickets:
-        raise ValueError("there are no tickets to print")
+        raise ValueError("there are no cards to print")
     if paper not in PAPER_SIZES:
         raise ValueError(f"unknown paper size {paper!r}")
     if per_page not in TICKETS_PER_PAGE:
-        raise ValueError(f"tickets per page must be one of {sorted(TICKETS_PER_PAGE)}")
+        raise ValueError(f"cards per page must be one of {sorted(TICKETS_PER_PAGE)}")
     if orientation not in ORIENTATIONS:
         raise ValueError(f"orientation must be one of {list(ORIENTATIONS)}")
     fonts = fonts or Fonts()
@@ -221,7 +221,7 @@ def build_tickets_pdf(
 
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=(page_w, page_h))
-    c.setTitle(printable(f"{game_name} tickets", fonts))
+    c.setTitle(printable(f"{game_name} cards", fonts))
     for index, (number, cells) in enumerate(tickets):
         slot = index % per_page
         if slot == 0:

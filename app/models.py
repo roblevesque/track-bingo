@@ -41,11 +41,19 @@ class Song(SQLModel, table=True):
     # Non-destructive play window: the file is never re-encoded.
     start_ms: int = 0
     end_ms: int | None = None  # None = play to the end
+    auto_fill: bool = True  # when one end of the play window is captured, fill in the other from the default clip length
     created_at: datetime = Field(default_factory=utcnow)
 
     @property
     def tag_list(self) -> list[str]:
         return [tag for tag in self.tags.split(",") if tag]
+
+
+class AppSetting(SQLModel, table=True):
+    """Site-wide settings, shared by every account (a key and a text value)."""
+
+    key: str = Field(primary_key=True)
+    value: str = ""
 
 
 class Branding(SQLModel, table=True):

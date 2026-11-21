@@ -26,7 +26,7 @@
   <h1>{{ game.name }}{% if game.run_number > 1 or other_runs %} <span class="muted">run {{ game.run_number }}</span>{% endif %}</h1>
   {% if can_delete %}
   <form method="post" action="/games/{{ game.id }}/delete" class="inline"
-        data-confirm="Delete this game and all of its tickets?">
+        data-confirm="Delete this game and all of its cards?">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <button class="link danger" type="submit">{{ 'Delete this run' if other_runs else 'Delete game' }}</button>
   </form>
@@ -35,8 +35,8 @@
 
 <section class="card">
   <p>Join code <strong class="code">{{ game.code }}</strong></p>
-  <p class="muted">{{ game.grid_size }}&times;{{ game.grid_size }} tickets &middot;
-    {{ ticket_numbers|length }} tickets &middot; {{ song_count }} songs in the pool &middot;
+  <p class="muted">{{ game.grid_size }}&times;{{ game.grid_size }} cards &middot;
+    {{ ticket_numbers|length }} cards &middot; {{ song_count }} songs in the pool &middot;
     {{ team_count }} team{{ '' if team_count == 1 else 's' }} joined &middot; status: {{ game.status }}</p>
   <p><a class="button" href="/games/{{ game.id }}/run">{% if game.status == 'draft' %}Open host console{% else %}Back to host console{% endif %}</a></p>
 </section>
@@ -45,11 +45,11 @@
 <section class="card">
   <h2>Run this game again</h2>
   <p class="muted">Creates a new run with a new join code, the same songs and rounds, and fresh teams.
-    By default the tickets are kept, so tickets you already printed still work.</p>
+    By default the cards are kept, so cards you already printed still work.</p>
   <form method="post" action="/games/{{ game.id }}/rerun" class="stack">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label class="check"><input type="checkbox" name="regenerate" value="on">
-      Generate new tickets instead (printed tickets will no longer match)</label>
+      Generate new cards instead (printed cards will no longer match)</label>
     <button type="submit">Run again with a new join code</button>
   </form>
 </section>
@@ -78,7 +78,7 @@
     </label>
     <button type="submit">Download</button>
   </form>
-  <p class="muted">The file holds the songs' details, the rounds and the exact tickets, so printed tickets stay
+  <p class="muted">The file holds the songs' details, the rounds and the exact cards, so printed cards stay
     valid when it is imported elsewhere. Teams and results aren't included.</p>
 </section>
 
@@ -112,36 +112,36 @@
 </section>
 
 <section class="card">
-  <h2>Tickets</h2>
-  <form method="get" action="/games/{{ game.id }}/tickets.pdf" class="row">
+  <h2>Cards</h2>
+  <form method="get" action="/games/{{ game.id }}/cards.pdf" class="row">
     <label>Paper
       <select name="paper"><option value="letter">US Letter</option><option value="a4">A4</option></select>
     </label>
     <label>Orientation
       <select name="orientation"><option value="landscape" selected>Landscape</option><option value="portrait">Portrait</option></select>
     </label>
-    <label>Tickets per page
+    <label>Cards per page
       <select name="per_page">
         <option value="1" selected>1</option>
         <option value="2">2</option>
         <option value="4">4 (small print; best for 3&times;3 or 4&times;4)</option>
       </select>
     </label>
-    <button type="submit">Download all {{ ticket_numbers|length }} tickets (PDF)</button>
+    <button type="submit">Download all {{ ticket_numbers|length }} cards (PDF)</button>
   </form>
-  <p class="muted">Each ticket is numbered, so you can check a printed ticket from the host console.</p>
-  <form method="post" action="/games/{{ game.id }}/ticket-footer" class="stack">
+  <p class="muted">Each card is numbered, so you can check a printed card from the host console.</p>
+  <form method="post" action="/games/{{ game.id }}/card-footer" class="stack">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label>Footer line for this game's tickets
+    <label>Footer line for this game's cards
       <input name="ticket_footer" value="{{ game.ticket_footer }}" maxlength="120"
              placeholder="e.g. Next week: 90s Night, Thursday 7pm">
     </label>
-    <p class="muted">Printed at the bottom of every ticket, handy for announcing next week's game.
+    <p class="muted">Printed at the bottom of every card, handy for announcing next week's game.
       Leave it empty to use the footer from your Branding page.</p>
     <button type="submit">Save footer</button>
   </form>
   <p class="chips">
-    {% for n in ticket_numbers %}<a class="chip" href="/games/{{ game.id }}/tickets/{{ n }}">{{ n }}</a>{% endfor %}
+    {% for n in ticket_numbers %}<a class="chip" href="/games/{{ game.id }}/cards/{{ n }}">{{ n }}</a>{% endfor %}
   </p>
 </section>
 {% endblock %}

@@ -393,11 +393,8 @@ if (root) {
     $("#btn-finish").disabled = !active;
 
     const song = state.current_song;
-    $("#now-title").textContent = song ? song.title : "Nothing yet";
-    $("#now-artist").textContent = song && song.artist ? `\u2014 ${song.artist}` : "";
     $("#progress").textContent = draft ? "Game not started." : `${state.songs_played} of ${state.total_songs} songs played`;
     const upcoming = state.next_song;
-    $("#next-title").textContent = upcoming ? `${upcoming.title}${upcoming.artist ? " \u2014 " + upcoming.artist : ""}` : "\u2014";
     if (upcoming && upcoming.audio_url !== preloaded) { // fetch the next clip ahead of time
       preloaded = upcoming.audio_url;
       preload.src = upcoming.audio_url;
@@ -412,35 +409,48 @@ if (root) {
 
     const claims = state.claims.map((c) => {
       const label = c.status === "win" ? "VALID" : "not valid";
-      return el("li", `${c.team} (ticket ${c.ticket}): ${label} after song ${c.songs_played} \u2014 ${c.detail}`, c.status);
+      return el("li", `${c.team} (card ${c.ticket}): ${label} after song ${c.songs_played} \u2014 ${c.detail}`, c.status);
     });
     $("#claims").replaceChildren(...(claims.length ? claims : [el("li", "No claims yet.", "muted")]));
 
-    const teams = state.teams.map((t) => el("li", `${t.name} (ticket ${t.ticket})`));
+    const teams = state.teams.map((t) => el("li", `${t.name} (card ${t.ticket})`));
     $("#teams").replaceChildren(...(teams.length ? teams : [el("li", "Nobody has joined yet.", "muted")]));
 
-    $("#played").replaceChildren(...state.played.map((p) => {
-      const li = el("li", `${p.title}${p.artist ? " \u2014 " + p.artist : ""}`);
-      li.value = p.n; // keep the real song number even though newest is listed first
-      return li;
-    }));
+    // While a game is running the song on the speakers heads the queue, highlighted; everything
+    // before it is in the separate Played box. Once the game ends there is no "now playing".
+    const showCurrent = active && Boolean(song) && state.played.length > 0;
+    const finishedSongs = showCurrent ? state.played.slice(1) : state.played; // newest first
+    $("#played").replaceChildren(...(finishedSongs.length
+      ? finishedSongs.map((p) => {
+        const li = el("li", `${p.title}${p.artist ? " \u2014 " + p.artist : ""}`);
+        li.value = p.n; // keep the real song number even though newest is listed first
+        return li;
+      })
+      : [el("li", "Nothing has been played yet.", "muted")]));
 
-    const queue = state.upcoming.map((s, i) => {
+    const queue = [];
+    if (showCurrent) {
+      const li = el("li", `\u25b6 ${songLine(song)}`, "current");
+      li.value = state.played[0].n;
+      li.setAttribute("aria-label", `Now playing: ${songLine(song)}`);
+      queue.push(li);
+    }
+    state.upcoming.forEach((s, i) => {
       const li = el("li", songLine(s), i === 0 ? "next" : "");
       li.value = s.n; // the number the song will have when it is played
-      return li;
+      queue.push(li);
     });
     const emptyQueue = draft ? "The play order is made when you start the game." : "No songs left.";
     $("#upcoming").replaceChildren(...(queue.length ? queue : [el("li", emptyQueue, "muted")]));
-    $("#upcoming-count").textContent = state.upcoming.length ? `(${state.upcoming.length})` : "";
-    $("#played-count").textContent = state.played.length ? `(${state.played.length})` : "";
+    $("#upcoming-count").textContent = state.upcoming.length ? `(${state.upcoming.length} to come)` : "";
+    $("#played-count").textContent = finishedSongs.length ? `(${finishedSongs.length})` : "";
 
     // A valid bingo is the thing the host most needs to notice, so it gets a banner.
     const wins = state.claims.filter((c) => c.status === "win").reverse(); // oldest first, so ties read in order
     const banner = $("#claim-alert");
     banner.hidden = wins.length === 0;
     banner.textContent = wins.length
-      ? "Bingo called! " + wins.map((w) => `${w.team} (ticket ${w.ticket}) after song ${w.songs_played}: ${w.detail}`).join(" \u2022 ")
+      ? "Bingo called! " + wins.map((w) => `${w.team} (card ${w.ticket}) after song ${w.songs_played}: ${w.detail}`).join(" \u2022 ")
       : "";
 
     renderRules();
@@ -496,18 +506,18 @@ if (root) {
     if (d) render(d);
   });
 
-  // ---- check a printed ticket
+  // ---- check a printed card
   $("#check-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const box = $("#check-result");
     const d = await post("check", { ticket_number: event.target.elements.ticket_number.value });
     if (!d) { box.hidden = true; return; }
     if (d.status === "win") {
-      box.textContent = `Ticket ${d.ticket} WINS ${d.round}: ${d.lines.join(", ") || "full house"}.`;
+      box.textContent = `Card ${d.ticket} WINS ${d.round}: ${d.lines.join(", ") || "full house"}.`;
       box.className = "flash success";
     } else {
       const need = d.missing.length ? ` Still needs: ${d.missing.join("; ")}.` : "";
-      box.textContent = `Ticket ${d.ticket} does not win ${d.round} yet (${d.squares_needed} short).${need}`;
+      box.textContent = `Card ${d.ticket} does not win ${d.round} yet (${d.squares_needed} short).${need}`;
       box.className = "flash error";
     }
     box.hidden = false;

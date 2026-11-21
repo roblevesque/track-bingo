@@ -116,13 +116,13 @@ def test_public_logo_404s_when_the_host_has_none(app, running_game):
 def test_tickets_pdf_uses_the_branding(app, logged_in, tmp_path):
     ids = seed_songs(app, logged_in, tmp_path, 12)
     game_id = game_id_from(create_game(logged_in, ids, grid_size=3, tickets=4))
-    plain = logged_in.get(f"/games/{game_id}/tickets.pdf")
+    plain = logged_in.get(f"/games/{game_id}/cards.pdf")
     save(logged_in, logo=("logo.png", png(size=(300, 100)), "image/png"), header_text="Branded", footer_text="Footer",
          use_accent="on", accent_color="#2a9d8f")
-    branded = logged_in.get(f"/games/{game_id}/tickets.pdf")
+    branded = logged_in.get(f"/games/{game_id}/cards.pdf")
     assert plain.status_code == branded.status_code == 200
     assert branded.content.startswith(b"%PDF") and branded.content != plain.content and len(branded.content) > len(plain.content)
-    assert "branded" in logged_in.get(f"/games/{game_id}/tickets/1").text
+    assert "branded" in logged_in.get(f"/games/{game_id}/cards/1").text
 
 
 def test_preview_pdf(app, logged_in):

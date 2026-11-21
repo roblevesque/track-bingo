@@ -176,7 +176,7 @@ def perform_import(session: Session, settings, user: User, bundle_path: Path) ->
                     "Upload them first, or export the game again with audio included."
                 )
             if len({s.id for s in resolved.values()}) != len(resolved):
-                raise ImportProblem("Two songs in this game are the same recording, which tickets can't hold.")
+                raise ImportProblem("Two songs in this game are the same recording, which cards can't hold.")
 
             game = Game(owner_id=user.id, name=bundle.name, code=_new_code(session), grid_size=bundle.grid_size,
                         ticket_footer=bundle.ticket_footer)

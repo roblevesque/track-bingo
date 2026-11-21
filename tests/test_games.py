@@ -53,15 +53,15 @@ def test_create_game_validation(app, logged_in, tmp_path):
 def test_too_many_tickets_is_reported(app, logged_in, tmp_path):
     ids = seed_songs(app, logged_in, tmp_path, 10)  # C(10, 9) = 10 possible tickets
     response = create_game(logged_in, ids, grid_size=3, tickets=11)
-    assert response.status_code == 400 and "different tickets are possible" in response.text
+    assert response.status_code == 400 and "different cards are possible" in response.text
 
 
 def test_ticket_page(app, logged_in, tmp_path):
     ids = seed_songs(app, logged_in, tmp_path, 12)
     game_id = game_id_from(create_game(logged_in, ids))
-    page = logged_in.get(f"/games/{game_id}/tickets/1")
+    page = logged_in.get(f"/games/{game_id}/cards/1")
     assert page.status_code == 200 and "song " in page.text and "repeat(3, 1fr)" in page.text
-    assert logged_in.get(f"/games/{game_id}/tickets/99").status_code == 404
+    assert logged_in.get(f"/games/{game_id}/cards/99").status_code == 404
 
 
 def test_rounds_can_be_added_updated_and_deleted(app, logged_in, tmp_path):
@@ -156,7 +156,7 @@ def test_every_host_sees_and_can_open_every_game(app, logged_in, tmp_path):
         login(other, "other")
         assert "Pub Night" in other.get("/games").text
         assert other.get(f"/games/{game_id}").status_code == 200
-        assert other.get(f"/games/{game_id}/tickets/1").status_code == 200
+        assert other.get(f"/games/{game_id}/cards/1").status_code == 200
 
 
 def test_only_the_creator_or_an_admin_can_delete_a_game(app, logged_in, tmp_path):

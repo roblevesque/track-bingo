@@ -15,7 +15,7 @@ def make_game(app, host, tmp_path):
 
 
 def set_footer(client, game_id, text):
-    return client.post(f"/games/{game_id}/ticket-footer",
+    return client.post(f"/games/{game_id}/card-footer",
                        data={"ticket_footer": text, "csrf_token": csrf_token(client, f"/games/{game_id}")},
                        follow_redirects=False)
 
@@ -28,7 +28,7 @@ def footer_of(app, game_id):
 def test_a_new_game_has_no_footer_and_the_page_offers_the_form(app, logged_in, tmp_path):
     game_id = make_game(app, logged_in, tmp_path)
     assert footer_of(app, game_id) == ""
-    assert f'action="/games/{game_id}/ticket-footer"' in logged_in.get(f"/games/{game_id}").text
+    assert f'action="/games/{game_id}/card-footer"' in logged_in.get(f"/games/{game_id}").text
 
 
 def test_the_footer_is_saved_tidied_and_shown_again(app, logged_in, tmp_path):
@@ -57,7 +57,7 @@ def test_an_overlong_footer_is_refused_and_nothing_changes(app, logged_in, tmp_p
 def test_any_host_can_set_it_but_logging_in_is_required(app, logged_in, tmp_path):
     game_id = make_game(app, logged_in, tmp_path)
     anonymous = new_player(app)
-    assert anonymous.post(f"/games/{game_id}/ticket-footer", data={"ticket_footer": "x"}, follow_redirects=False).status_code in (303, 400, 403)
+    assert anonymous.post(f"/games/{game_id}/card-footer", data={"ticket_footer": "x"}, follow_redirects=False).status_code in (303, 400, 403)
     assert footer_of(app, game_id) == ""
     add_user(app, "other")
     other = new_player(app)
@@ -68,19 +68,19 @@ def test_any_host_can_set_it_but_logging_in_is_required(app, logged_in, tmp_path
 
 def test_it_needs_a_csrf_token(app, logged_in, tmp_path):
     game_id = make_game(app, logged_in, tmp_path)
-    response = logged_in.post(f"/games/{game_id}/ticket-footer", data={"ticket_footer": "x"}, follow_redirects=False)
+    response = logged_in.post(f"/games/{game_id}/card-footer", data={"ticket_footer": "x"}, follow_redirects=False)
     assert response.status_code in (400, 403)
     assert footer_of(app, game_id) == ""
 
 
 def test_the_pdf_defaults_to_one_landscape_ticket_per_page(app, logged_in, tmp_path):
     game_id = make_game(app, logged_in, tmp_path)
-    pdf = logged_in.get(f"/games/{game_id}/tickets.pdf").content
+    pdf = logged_in.get(f"/games/{game_id}/cards.pdf").content
     assert page_count(pdf) == 4
     assert all(w > h for w, h in page_sizes(pdf))
-    portrait = logged_in.get(f"/games/{game_id}/tickets.pdf?orientation=portrait&per_page=2").content
+    portrait = logged_in.get(f"/games/{game_id}/cards.pdf?orientation=portrait&per_page=2").content
     assert page_count(portrait) == 2 and all(w < h for w, h in page_sizes(portrait))
-    assert logged_in.get(f"/games/{game_id}/tickets.pdf?orientation=sideways").status_code == 400
+    assert logged_in.get(f"/games/{game_id}/cards.pdf?orientation=sideways").status_code == 400
 
 
 def test_the_game_page_defaults_match(app, logged_in, tmp_path):

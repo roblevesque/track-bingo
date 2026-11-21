@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Ticket branding &middot; {{ app_name }}{% endblock %}
+{% block title %}Card branding &middot; {{ app_name }}{% endblock %}
 {% block content %}
-<h1>Ticket branding</h1>
-<p class="muted">Add your logo, colour and wording to printed tickets. The colour and logo also appear on
-  the tickets players see on their phones. Everything is optional, and it applies to all of your games.</p>
+<h1>Card branding</h1>
+<p class="muted">Add your logo, colour and wording to printed cards. The colour and logo also appear on
+  the cards players see on their phones. Everything is optional, and it applies to all of your games.</p>
 
 {% for error in errors %}<p class="flash error">{{ error }}</p>{% endfor %}
 
@@ -14,7 +14,7 @@
     <label>Header text <span class="muted">(shown instead of the game name)</span>
       <input name="header_text" id="header_text" value="{{ form.header_text }}" maxlength="80" placeholder="e.g. Thursday {{ app_name }}">
     </label>
-    <label>Footer text <span class="muted">(printed along the bottom of each ticket)</span>
+    <label>Footer text <span class="muted">(printed along the bottom of each card)</span>
       <input name="footer_text" id="footer_text" value="{{ form.footer_text }}" maxlength="120" placeholder="e.g. The Rusty Anchor &middot; every Thursday at 8pm">
     </label>
 
@@ -41,7 +41,7 @@
       <div class="brand-preview-header" id="pv-header">
         <img id="pv-logo" alt="" hidden>
         <strong id="pv-title">Your game name</strong>
-        <span>Ticket 1</span>
+        <span>Card 1</span>
       </div>
       <div class="brand-preview-grid">
         {% for i in range(9) %}<div><strong>Song {{ i + 1 }}</strong><br><small>Artist</small></div>{% endfor %}
