@@ -70,6 +70,7 @@ if (root) {
   };
   const showError = (message) => { errorBox.textContent = message; errorBox.hidden = false; };
   const clearError = () => { errorBox.hidden = true; };
+  const factLine = (text) => el("div", `Fun fact: ${text}`, "song-fact");
   const songLine = (s) => `${s.title}${s.artist ? " \u2014 " + s.artist : ""}`;
 
   async function post(action, fields = {}, options = {}) {
@@ -432,9 +433,6 @@ if (root) {
     $("#btn-finish").disabled = !active;
 
     const song = state.current_song;
-    const funFact = active && song && song.fun_fact ? song.fun_fact : "";
-    $("#fun-fact").textContent = funFact ? `Fun fact: ${funFact}` : "";
-    $("#fun-fact").hidden = !funFact;
     $("#progress").textContent = draft ? "Game not started." : `${state.songs_played} of ${state.total_songs} songs played`;
     const upcoming = state.next_song;
     if (upcoming && upcoming.audio_url !== preloaded) { // fetch the next clip ahead of time
@@ -475,11 +473,13 @@ if (root) {
       const li = el("li", `\u25b6 ${songLine(song)}`, "current");
       li.value = state.played[0].n;
       li.setAttribute("aria-label", `Now playing: ${songLine(song)}`);
+      if (song.fun_fact) li.append(factLine(song.fun_fact));
       queue.push(li);
     }
     state.upcoming.forEach((s, i) => {
       const li = el("li", songLine(s), i === 0 ? "next" : "");
       li.value = s.n; // the number the song will have when it is played
+      if (i === 0 && s.fun_fact) li.append(factLine(s.fun_fact)); // the next song's note, so you can plan your patter
       queue.push(li);
     });
     const emptyQueue = draft ? "The play order is made when you start the game." : "No songs left.";

@@ -40,6 +40,9 @@ if (root) {
     $("#r-fact").textContent = fact ? `Fun fact: ${fact}` : "";
     $("#r-fact").hidden = !fact;
     $("#r-next-song").textContent = state.next ? `${state.next.title}${state.next.artist ? " \u2014 " + state.next.artist : ""}` : "\u2014";
+    const nextFact = state.next && state.next.fun_fact && active ? state.next.fun_fact : "";
+    $("#r-next-fact").textContent = nextFact ? `Fun fact: ${nextFact}` : "";
+    $("#r-next-fact").hidden = !nextFact;
     $("#r-progress").textContent = draft ? "Game not started." : state.status === "finished" ? "The game has ended." : `${state.songs_played} of ${state.total_songs} songs played`;
 
     $("#r-start").hidden = !draft;

@@ -217,3 +217,11 @@ def test_the_pager_shows_the_ends_and_the_neighbours():
     assert page_links(10, 20) == [1, None, 8, 9, 10, 11, 12, None, 20]
     assert page_links(2, 20) == [1, 2, 3, 4, None, 20]
     assert page_links(20, 20) == [1, None, 18, 19, 20]
+
+
+def test_the_phone_remote_also_gets_the_next_songs_fun_fact_and_older_snapshots_still_work():
+    host = host_snapshot("Written in a day")
+    host["next_song"] = {"id": 4, "title": "Song 4", "artist": "B", "fun_fact": "Covered by a pub band"}
+    assert remote_view(host, True)["next"]["fun_fact"] == "Covered by a pub band"
+    del host["next_song"]["fun_fact"]
+    assert remote_view(host, True)["next"]["fun_fact"] == ""

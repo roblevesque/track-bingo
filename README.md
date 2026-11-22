@@ -73,8 +73,9 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   only. It applies to the printed PDF and to players' phone cards; a song with no band name shows its title instead.
   The cards themselves don't change, so already-printed cards stay valid. The setting is copied by *Run again* and
   included in game exports.
-- **Fun facts:** add a note to any song (on its edit page). While that song plays, only you see it, on the
-  console and on the phone remote. Notes travel with exported games.
+- **Fun facts:** add a note to any song (on its edit page). Only you see it: on the host console it
+  appears under the song that is playing and under the next song (so you can plan what to say), and the phone remote
+  shows the notes for the current and the next song. Notes travel with exported games.
 - **Play-window markers and sorting:** in the library, a song with a start or end time gets a green marker and one
   without gets a red marker, with a count of how many are still to do. Sort by title, artist, newest added,
   recently edited or "not set first", and filter to songs with or without a play window. Each person's choice is

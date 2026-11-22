@@ -90,7 +90,8 @@ def remote_view(host: dict, console_online: bool) -> dict:
         "songs_played": host["songs_played"],
         "total_songs": host["total_songs"],
         "current": {"title": current["title"], "artist": current["artist"], "fun_fact": current.get("fun_fact", "")} if current else None,
-        "next": {"id": upcoming["id"], "title": upcoming["title"], "artist": upcoming["artist"]} if upcoming else None,
+        "next": {"id": upcoming["id"], "title": upcoming["title"], "artist": upcoming["artist"], "fun_fact": upcoming.get("fun_fact", "")}
+        if upcoming else None,
         "wins": [  # oldest first, so ties read in order
             {"team": c["team"], "ticket": c["ticket"], "songs_played": c["songs_played"], "detail": c["detail"]}
             for c in reversed(wins)

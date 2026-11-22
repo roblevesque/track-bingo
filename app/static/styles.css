@@ -25,6 +25,7 @@
     --ok-bg: #173324;
     --err-bg: #3a1b18;
     --info-bg: #1c2540;
+    --accent-soft: #9a9ab0;
   }
 }
 * { box-sizing: border-box; }
@@ -297,3 +298,8 @@ fieldset.text-looks legend { padding: 0 0.4rem; font-weight: 600; }
 label.check.keep { display: inline-flex; margin: 0 0.6rem 0.2rem 0; }
 label.check.keep input { width: auto; margin: 0; }
 label.check input[type=radio] { width: auto; margin: 0; }
+
+/* host console: a song's note sits under its line in the queue (now playing and next) */
+.song-fact { font-weight: 400; font-size: 0.9rem; margin: 0.2rem 0 0.3rem; padding: 0.3rem 0.5rem; border-radius: 4px;
+  background: var(--accent-soft, #eef0ff); color: var(--text, inherit); border-left: 3px solid var(--accent, #5b4bdb); }
+ol.playlist li.current .song-fact { background: rgba(255, 255, 255, 0.92); color: #222; }
