@@ -182,3 +182,38 @@ def test_the_play_window_filter():
     assert ids(filter_show(LIBRARY, "done")) == [1, 3]
     assert ids(filter_show(LIBRARY, "all")) == [1, 2, 3, 4, 5] and ids(filter_show(LIBRARY, "x")) == [1, 2, 3, 4, 5]
     assert DEFAULT_SORT in SORTS and DEFAULT_SHOW in SHOWS
+
+
+# ---------------------------------------------------------------- paging
+
+from app.services.paging import DEFAULT_PER_PAGE, PER_PAGE_OPTIONS, clean_page, clean_per_page, page_links, paginate  # noqa: E402
+
+
+def test_pages_cover_every_item_exactly_once():
+    for total in (0, 1, 24, 25, 26, 99, 100, 101):
+        seen = []
+        first = paginate(total, 1, 25)
+        for n in range(1, first.pages + 1):
+            pg = paginate(total, n, 25)
+            seen.extend(range(pg.start, pg.stop))
+        assert seen == list(range(total)), total
+    assert paginate(0, 1, 25).pages == 1 and paginate(26, 1, 25).pages == 2
+
+
+def test_a_page_that_no_longer_exists_becomes_the_last_or_first_page():
+    assert paginate(30, 99, 25).page == 2 and paginate(30, 0, 25).page == 1 and paginate(30, -4, 25).page == 1
+    assert paginate(5, 1, 7).per_page == DEFAULT_PER_PAGE  # only the offered sizes are used
+
+
+def test_page_numbers_from_forms_are_made_safe():
+    assert [clean_page(x) for x in ("3", " 7 ", "0", "-2", "abc", "", None, "9" * 30)] == [3, 7, 1, 1, 1, 1, 1, 1_000_000]
+    assert clean_per_page("100") == 100 and clean_per_page("7") == DEFAULT_PER_PAGE and clean_per_page("x", 25) == 25
+    assert DEFAULT_PER_PAGE in PER_PAGE_OPTIONS
+
+
+def test_the_pager_shows_the_ends_and_the_neighbours():
+    assert page_links(1, 1) == [1]
+    assert page_links(1, 5) == [1, 2, 3, 4, 5]
+    assert page_links(10, 20) == [1, None, 8, 9, 10, 11, 12, None, 20]
+    assert page_links(2, 20) == [1, 2, 3, 4, None, 20]
+    assert page_links(20, 20) == [1, None, 18, 19, 20]

@@ -252,3 +252,7 @@ tr.window-todo td:first-child { box-shadow: inset 4px 0 0 #d14b4b; }
 .inline-label { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: 0.75rem; }
 .inline-label select { width: auto; margin: 0; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.pager { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin: 0.6rem 0; }
+.pager a, .pager strong { padding: 0.2rem 0.6rem; border-radius: 6px; }
+.pager strong { background: var(--accent); color: var(--accent-text); }

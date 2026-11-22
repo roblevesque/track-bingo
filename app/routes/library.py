@@ -24,6 +24,7 @@ from app.services.clips import (
     write_tags,
 )
 from app.services.gameio import sha256_file
+from app.services.paging import PER_PAGE_OPTIONS, clean_page, clean_per_page, page_links, paginate
 from app.services.search import SHOWS, SORTS, filter_show, has_window, matches, parse_query, sort_songs
 from app.services.parsing import MAX_FUN_FACT, clean_fun_fact, format_time_ms, normalize_tags, parse_time_ms
 from app.services.settings_store import (
@@ -37,12 +38,19 @@ MAX_TEXT = 200
 DURATION_SLACK_MS = 1000  # VBR MP3 durations are estimates
 
 
-def _library_url(q: str, song_id: int | None = None) -> str:
-    """The library page with the person's search still in place (only ever a search, never a free-form address),
+def _library_url(q: str, song_id: int | None = None, page: object = 1) -> str:
+    """The library page as the person left it (their search and page; only ever those, never a free-form address),
     scrolled to the song just edited, or to the song list when there is no such song."""
-    q = q.strip()[:100]
+    q, page = q.strip()[:100], clean_page(page)
+    params = ([f"q={quote(q)}"] if q else []) + ([f"page={page}"] if page > 1 else [])
     anchor = f"#song-{song_id}" if song_id else "#songs"
-    return (f"/library?q={quote(q)}" if q else "/library") + anchor
+    return "/library" + (f"?{'&'.join(params)}" if params else "") + anchor
+
+
+def _carry(q: str, page: object) -> str:
+    """The query-string part that lets an edit page find its way back: the search and the page."""
+    q, page = q.strip()[:100], clean_page(page)
+    return "&".join(([f"q={quote(q)}"] if q else []) + ([f"page={page}"] if page > 1 else []))
 
 
 def _redirect(url: str) -> RedirectResponse:
@@ -67,26 +75,36 @@ def library(
     q: str = "",
     sort: str = "",
     show: str = "",
+    page: str = "",
+    per_page: str = "",
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
 ):
-    # The order and the play-window filter are remembered per person: choosing one saves it, and a visit with
-    # nothing chosen (after an edit, say) uses what was chosen last.
-    saved_sort, saved_show = get_library_view(session, user.id)
+    # The order, the play-window filter and the page size are remembered per person: choosing one saves it, and a
+    # visit with nothing chosen (after an edit, say) uses what was chosen last.
+    saved_sort, saved_show, saved_per = get_library_view(session, user.id)
     chosen_sort = sort if sort in SORTS else saved_sort
     chosen_show = show if show in SHOWS else saved_show
-    if (sort in SORTS or show in SHOWS) and (chosen_sort, chosen_show) != (saved_sort, saved_show):
-        set_library_view(session, user.id, chosen_sort, chosen_show)
+    chosen_per = clean_per_page(per_page, saved_per)
+    if (chosen_sort, chosen_show, chosen_per) != (saved_sort, saved_show, saved_per):
+        set_library_view(session, user.id, chosen_sort, chosen_show, chosen_per)
     everything = session.exec(select(Song)).all()
     songs = everything
     query = parse_query(q)
     if not query.empty:  # filtered here rather than in SQL: a library is a few thousand rows at most
         songs = [song for song in songs if matches(query, song.title, song.artist, song.tags)]
     songs = sort_songs(filter_show(songs, chosen_show), chosen_sort)
+    pg = paginate(len(songs), clean_page(page), chosen_per)
+
+    def page_url(n: int) -> str:
+        return "/library" + (f"?{_carry(q, n)}" if _carry(q, n) else "") + "#songs"
+
     return render(
-        request, "library.html", user=user, songs=songs, q=q.strip(), clip_seconds=get_clip_seconds(session),
+        request, "library.html", user=user, songs=songs[pg.start:pg.stop], q=q.strip(), clip_seconds=get_clip_seconds(session),
         sorts=SORTS, shows=SHOWS, sort=chosen_sort, show=chosen_show, has_window=has_window,
         total=len(everything), with_window=sum(has_window(s) for s in everything),
+        pg=pg, links=page_links(pg.page, pg.pages), page_url=page_url, per_pages=PER_PAGE_OPTIONS,
+        per_page=chosen_per, carry=_carry(q, pg.page), page_no=pg.page, matching=pg.total,
     )
 
 
@@ -187,12 +205,14 @@ def edit_form(
     request: Request,
     song_id: int,
     q: str = "",
+    page: str = "",
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
 ):
     song = owned_song(session, user, song_id)
     return render(request, "edit_song.html", user=user, song=song, form=_form_values(song), errors=[],
-                  clip_seconds=get_clip_seconds(session), q=q.strip()[:100])
+                  clip_seconds=get_clip_seconds(session), q=q.strip()[:100], page=clean_page(page),
+                  back_url=_library_url(q, song.id, page))
 
 
 @router.post("/{song_id}/edit")
@@ -208,6 +228,7 @@ async def edit_submit(
     auto_fill: bool = Form(False),
     fun_fact: str = Form(""),
     q: str = Form(""),
+    page: str = Form(""),
     csrf_token: str = Form(""),
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
@@ -247,7 +268,8 @@ async def edit_submit(
         form = {"title": title, "artist": artist, "tags": tags, "start": start, "end": end, "auto_fill": auto_fill, "fun_fact": fun_fact}
         return render(
             request, "edit_song.html", status_code=400, user=user, song=song, form=form, errors=errors,
-            clip_seconds=get_clip_seconds(session), q=q.strip()[:100],
+            clip_seconds=get_clip_seconds(session), q=q.strip()[:100], page=clean_page(page),
+            back_url=_library_url(q, song.id, page),
         )
 
     if write_tags_to_file:
@@ -267,7 +289,7 @@ async def edit_submit(
     session.add(song)
     session.commit()
     flash(request, f"Saved \u201c{song.title}\u201d.", "success")
-    return _redirect(_library_url(q, song.id))
+    return _redirect(_library_url(q, song.id, page))
 
 
 @router.post("/{song_id}/delete")
@@ -275,6 +297,7 @@ def delete_song(
     request: Request,
     song_id: int,
     q: str = Form(""),
+    page: str = Form(""),
     csrf_token: str = Form(""),
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
@@ -283,19 +306,19 @@ def delete_song(
     song = owned_song(session, user, song_id)
     if not (user.is_admin or song.owner_id == user.id):
         flash(request, "Only the person who uploaded a song, or an administrator, can delete it.", "error")
-        return _redirect(_library_url(q))
+        return _redirect(_library_url(q, page=page))
     used_in = session.exec(
         select(Game.name).join(GameSong, GameSong.game_id == Game.id).where(GameSong.song_id == song.id)
     ).all()
     if used_in:
         names = ", ".join(f"\u201c{name}\u201d" for name in list(dict.fromkeys(used_in))[:3])
         flash(request, f"Can't delete \u201c{song.title}\u201d: it is in the song pool of {names}. Delete those games first.", "error")
-        return _redirect(_library_url(q))
+        return _redirect(_library_url(q, page=page))
     _clip_path(request, song).unlink(missing_ok=True)
     session.delete(song)
     session.commit()
     flash(request, "Song deleted.", "success")
-    return _redirect(_library_url(q))
+    return _redirect(_library_url(q, page=page))
 
 
 @router.get("/{song_id}/audio")

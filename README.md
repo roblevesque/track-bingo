@@ -50,6 +50,9 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   without gets a red marker, with a count of how many are still to do. Sort by title, artist, newest added,
   recently edited or "not set first", and filter to songs with or without a play window. Each person's choice is
   remembered, so the order doesn't change under you while you edit.
+- **Pages:** a long library is shown 25, 50, 100 or 200 songs at a time (your choice is remembered). Editing or
+  deleting a song returns you to the same search and the same page, with the song you edited centred if it is
+  still on that page.
 - **Searching songs:** after editing a song you return to the same search, scrolled to the song you just edited.
    the library search and the new-game filter match every word. `!tag` leaves out songs
   with that exact tag (`!"classic rock"` for a tag with a space) and `no:tags` finds songs with no tags.

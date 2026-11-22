@@ -46,20 +46,22 @@ def _view_key(user_id: int) -> str:
     return f"library_view:{user_id}"
 
 
-def get_library_view(session: "Session", user_id: int) -> tuple[str, str]:
-    """(sort, show) this person last chose on the library page, so the order stays the same from visit to visit."""
+def get_library_view(session: "Session", user_id: int) -> tuple[str, str, int]:
+    """(sort, show, songs per page) this person last chose on the library page, so it looks the same from visit to visit."""
     from app.models import AppSetting
+    from app.services.paging import clean_per_page
     from app.services.search import DEFAULT_SHOW, DEFAULT_SORT, SHOWS, SORTS
 
     row = session.get(AppSetting, _view_key(user_id))
-    sort, _, show = (row.value if row else "").partition("|")
-    return (sort if sort in SORTS else DEFAULT_SORT), (show if show in SHOWS else DEFAULT_SHOW)
+    sort, _, rest = (row.value if row else "").partition("|")
+    show, _, per_page = rest.partition("|")
+    return (sort if sort in SORTS else DEFAULT_SORT), (show if show in SHOWS else DEFAULT_SHOW), clean_per_page(per_page)
 
 
-def set_library_view(session: "Session", user_id: int, sort: str, show: str) -> None:
+def set_library_view(session: "Session", user_id: int, sort: str, show: str, per_page: int) -> None:
     from app.models import AppSetting
 
-    value = f"{sort}|{show}"
+    value = f"{sort}|{show}|{per_page}"
     row = session.get(AppSetting, _view_key(user_id))
     if row is not None and row.value == value:
         return

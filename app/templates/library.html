@@ -1,5 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Library &middot; {{ app_name }}{% endblock %}
+{% macro pager() %}
+{% if pg.pages > 1 %}
+<nav class="pager" aria-label="Pages of songs">
+  {% if pg.page > 1 %}<a href="{{ page_url(pg.page - 1) }}" rel="prev">&larr; Previous</a>{% else %}<span class="muted">&larr; Previous</span>{% endif %}
+  {% for n in links %}{% if n is none %}<span class="muted">&hellip;</span>{% elif n == pg.page %}<strong aria-current="page">{{ n }}</strong>{% else %}<a href="{{ page_url(n) }}">{{ n }}</a>{% endif %}{% endfor %}
+  {% if pg.page < pg.pages %}<a href="{{ page_url(pg.page + 1) }}" rel="next">Next &rarr;</a>{% else %}<span class="muted">Next &rarr;</span>{% endif %}
+</nav>
+{% endif %}
+{% endmacro %}
 {% block content %}
 <h1>Song library</h1>
 
@@ -39,6 +48,11 @@
         {% for key, label in sorts.items() %}<option value="{{ key }}" {% if key == sort %}selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
     </label>
+    <label class="inline-label">Per page
+      <select name="per_page" onchange="this.form.submit()">
+        {% for n in per_pages %}<option value="{{ n }}" {% if n == per_page %}selected{% endif %}>{{ n }}</option>{% endfor %}
+      </select>
+    </label>
     <label class="inline-label">Show
       <select name="show" onchange="this.form.submit()">
         {% for key, label in shows.items() %}<option value="{{ key }}" {% if key == show %}selected{% endif %}>{{ label }}</option>{% endfor %}
@@ -50,6 +64,7 @@
     Your sort order and filter are remembered.</p>
 
   {% if songs %}
+  {{ pager() }}
   <div class="scroll">
   <table>
     <thead>
@@ -68,12 +83,13 @@
         </td>
         <td class="hide-sm">{{ song.duration_ms|clock if song.duration_ms else '' }}</td>
         <td class="actions">
-          <a href="/library/{{ song.id }}/edit{% if q %}?q={{ q|urlencode }}{% endif %}">Edit</a>
+          <a href="/library/{{ song.id }}/edit{% if carry %}?{{ carry }}{% endif %}">Edit</a>
           {% if user.is_admin or song.owner_id == user.id %}
           <form method="post" action="/library/{{ song.id }}/delete" class="inline"
                 data-confirm="Delete &ldquo;{{ song.title }}&rdquo;? This also removes the audio file.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="q" value="{{ q }}">
+            <input type="hidden" name="page" value="{{ page_no }}">
             <button class="link danger" type="submit">Delete</button>
           </form>
           {% endif %}
@@ -83,7 +99,8 @@
     </tbody>
   </table>
   </div>
-  <p class="muted">{{ songs|length }} song{{ '' if songs|length == 1 else 's' }}{% if q %} matching &ldquo;{{ q }}&rdquo;{% endif %}</p>
+  {{ pager() }}
+  <p class="muted">Showing {{ '{:,}'.format(pg.start + 1) }}&ndash;{{ '{:,}'.format(pg.stop) }} of {{ '{:,}'.format(matching) }} song{{ '' if matching == 1 else 's' }}{% if q %} matching &ldquo;{{ q }}&rdquo;{% endif %}{% if show != 'all' %} ({{ shows[show]|lower }}){% endif %}</p>
   {% elif q %}
   <p class="muted">No songs match &ldquo;{{ q }}&rdquo;.</p>
   {% else %}

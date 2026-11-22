@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Edit {{ song.title }} &middot; {{ app_name }}{% endblock %}
 {% block content %}
-<p><a href="/library{% if q %}?q={{ q|urlencode }}{% endif %}#song-{{ song.id }}">&larr; Back to library{% if q %} (search: {{ q }}){% endif %}</a></p>
+<p><a href="{{ back_url }}">&larr; Back to library{% if q %} (search: {{ q }}){% endif %}{% if page and page > 1 %} (page {{ page }}){% endif %}</a></p>
 <h1>Edit song</h1>
 
 {% for error in errors %}<p class="flash error">{{ error }}</p>{% endfor %}
@@ -16,6 +16,7 @@
   <form method="post" action="/library/{{ song.id }}/edit">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="q" value="{{ q }}">
+    <input type="hidden" name="page" value="{{ page }}">
     <label>Title
       <input name="title" value="{{ form.title }}" maxlength="200" required>
     </label>

@@ -7,8 +7,9 @@ from tests.conftest import (
 )
 
 
-def post(client, path, page, **fields):
-    data = {"csrf_token": csrf_token(client, page)}
+def post(client, path, csrf_from, **fields):
+    """POST a form, taking the CSRF token from the page `csrf_from`; `fields` are the form fields."""
+    data = {"csrf_token": csrf_token(client, csrf_from)}
     data.update(fields)
     return client.post(path, data=data, follow_redirects=False)
 
@@ -429,3 +430,54 @@ def test_each_person_keeps_their_own_view(app, logged_in, tmp_path):
     page = other.get("/library").text
     assert 'value="title" selected' in page and 'value="all" selected' in page
     assert 'value="added" selected' in logged_in.get("/library").text
+
+
+# ---------------------------------------------------------------- library pages
+
+def many_songs(app, logged_in, tmp_path, count=30):
+    ids = seed_songs(app, logged_in, tmp_path, count)
+    logged_in.get("/library", params={"per_page": "25"})  # the smallest page size
+    return ids
+
+
+def test_a_long_library_is_split_into_pages(app, logged_in, tmp_path):
+    many_songs(app, logged_in, tmp_path)
+    first = logged_in.get("/library").text
+    assert len(names_in_order(first)) == 25 and "Showing 1&ndash;25 of 30 songs" in first and 'rel="next"' in first
+    second = logged_in.get("/library", params={"page": "2"}).text
+    assert len(names_in_order(second)) == 5 and "Showing 26&ndash;30 of 30 songs" in second and 'rel="prev"' in second
+    assert logged_in.get("/library", params={"page": "99"}).text.count('<tr id="song-') == 5  # past the end: last page
+    assert len(names_in_order(logged_in.get("/library", params={"page": "abc"}).text)) == 25
+
+
+def test_edits_snap_back_to_the_page_she_was_on(app, logged_in, tmp_path):
+    ids = many_songs(app, logged_in, tmp_path)
+    page2 = logged_in.get("/library", params={"page": "2", "q": "song"}).text
+    edit_links = [m for m in __import__("re").findall(r'href="(/library/\d+/edit[^"]*)"', page2)]
+    assert edit_links and all("page=2" in link.replace("&amp;", "&") and "q=song" in link for link in edit_links)
+    link = edit_links[0].replace("&amp;", "&")
+    song_id = int(link.split("/")[2])
+    edit = logged_in.get(link).text
+    assert 'name="page" value="2"' in edit and "page 2" in edit
+    saved = post(logged_in, f"/library/{song_id}/edit", link, title="Renamed", artist="A", tags="", q="song", page="2")
+    from urllib.parse import parse_qs, urlparse
+    where = urlparse(saved.headers["location"])
+    assert parse_qs(where.query) == {"q": ["song"], "page": ["2"]} and where.fragment == f"song-{song_id}"
+    assert post(logged_in, f"/library/{song_id}/edit", link, title="Again", artist="A", tags="", page="1").headers["location"] == f"/library#song-{song_id}"
+
+
+def test_deleting_the_last_song_on_a_page_lands_on_the_new_last_page(app, logged_in, tmp_path):
+    many_songs(app, logged_in, tmp_path, count=26)
+    last = logged_in.get("/library", params={"page": "2"}).text
+    (only,) = [int(i) for i in __import__("re").findall(r'<tr id="song-(\d+)"', last)]
+    r = post(logged_in, f"/library/{only}/delete", "/library", page="2")
+    assert r.headers["location"].startswith("/library?page=2")  # the same address; the library clamps it on arrival
+    assert len(names_in_order(logged_in.get(r.headers["location"].split("#")[0]).text)) == 25
+
+
+def test_the_page_size_is_remembered(app, logged_in, tmp_path):
+    seed_songs(app, logged_in, tmp_path, 3)
+    logged_in.get("/library", params={"per_page": "100"})
+    assert 'value="100" selected' in logged_in.get("/library").text
+    logged_in.get("/library", params={"per_page": "7"})  # not an offered size: ignored
+    assert 'value="100" selected' in logged_in.get("/library").text

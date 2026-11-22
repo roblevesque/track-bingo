@@ -10,11 +10,14 @@ document.addEventListener("submit", (event) => {
 // of the screen and briefly highlighted, so the next song is right there without scrolling.
 (function focusLibraryTarget() {
   const match = /^#(song-\d+|songs)$/.exec(window.location.hash);
-  const target = match && document.getElementById(match[1]);
-  if (!target || !document.querySelector("#songs")) return;
+  if (!match || !document.querySelector("#songs")) return;
+  // If the song isn't on this page any more (an edit moved it under the current sort), show the top of the list.
+  const found = document.getElementById(match[1]);
+  const target = found || document.getElementById("songs");
+  const isSong = Boolean(found) && match[1] !== "songs";
   requestAnimationFrame(() => {
-    target.scrollIntoView({ block: match[1] === "songs" ? "start" : "center" });
-    if (match[1] !== "songs") target.classList.add("just-edited");
+    target.scrollIntoView({ block: isSong ? "center" : "start" });
+    if (isSong) target.classList.add("just-edited");
   });
 })();
 
