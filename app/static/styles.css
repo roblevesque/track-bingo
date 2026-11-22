@@ -242,3 +242,13 @@ tr.just-edited td { animation: just-edited 3s ease-out; }
 .tabs [role=tab] { background: none; border: 1px solid transparent; border-bottom: 0; border-radius: 6px 6px 0 0; color: var(--muted);
   padding: 0.5rem 0.9rem; font: inherit; font-weight: 600; cursor: pointer; margin-bottom: -1px; }
 .tabs [role=tab][aria-selected=true] { background: var(--surface); border-color: var(--border); color: var(--text); }
+
+.marker { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; margin-right: 0.45rem; vertical-align: baseline; }
+.marker.set { background: #2e9e5b; }
+.marker.todo { background: #d14b4b; }
+tr.window-set td:first-child { box-shadow: inset 4px 0 0 #2e9e5b; }
+tr.window-todo td:first-child { box-shadow: inset 4px 0 0 #d14b4b; }
+.todo-count { color: #d14b4b; font-weight: 600; }
+.inline-label { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: 0.75rem; }
+.inline-label select { width: auto; margin: 0; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

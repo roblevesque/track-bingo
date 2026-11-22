@@ -34,7 +34,20 @@
     <input type="search" name="q" value="{{ q }}" placeholder="Search title, artist or tag"  title='Words must all match. !tag leaves a tag out (use quotes for tags with spaces: !"classic rock"). no:tags finds songs with no tags.'>
     <button type="submit">Search</button>
     {% if q %}<a href="/library">Clear</a>{% endif %}
+    <label class="inline-label">Sort
+      <select name="sort" onchange="this.form.submit()">
+        {% for key, label in sorts.items() %}<option value="{{ key }}" {% if key == sort %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="inline-label">Show
+      <select name="show" onchange="this.form.submit()">
+        {% for key, label in shows.items() %}<option value="{{ key }}" {% if key == show %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
   </form>
+  <p class="muted">{{ with_window }} of {{ total }} song{{ '' if total == 1 else 's' }} have a play window set
+    {% if total - with_window %}&middot; <span class="todo-count">{{ total - with_window }} still to do</span>{% endif %}.
+    Your sort order and filter are remembered.</p>
 
   {% if songs %}
   <div class="scroll">
@@ -44,14 +57,14 @@
     </thead>
     <tbody>
     {% for song in songs %}
-      <tr id="song-{{ song.id }}">
+      <tr id="song-{{ song.id }}" class="{{ 'window-set' if has_window(song) else 'window-todo' }}">
         <td>{{ song.title }}</td>
         <td>{{ song.artist }}</td>
         <td class="hide-sm">{% for tag in song.tag_list %}<span class="tag">{{ tag }}</span> {% endfor %}</td>
         <td>
-          {% if song.start_ms or song.end_ms %}
-            {{ song.start_ms|clock }} &ndash; {{ song.end_ms|clock if song.end_ms else 'end' }}
-          {% else %}<span class="muted">full track</span>{% endif %}
+          {% if has_window(song) %}
+            <span class="marker set" title="Play window set" aria-hidden="true"></span><span class="visually-hidden">Set: </span>{{ song.start_ms|clock }} &ndash; {{ song.end_ms|clock if song.end_ms else 'end' }}
+          {% else %}<span class="marker todo" title="No play window yet: plays the full track" aria-hidden="true"></span>Not set <span class="muted">(full track)</span>{% endif %}
         </td>
         <td class="hide-sm">{{ song.duration_ms|clock if song.duration_ms else '' }}</td>
         <td class="actions">

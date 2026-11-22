@@ -11,7 +11,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.db import get_session
 from app.deps import require_user
-from app.models import Game, GameSong, Song, User
+from app.models import Game, GameSong, Song, User, utcnow
 from app.security import check_csrf
 from app.services.clips import (
     ALLOWED_TYPES,
@@ -24,9 +24,11 @@ from app.services.clips import (
     write_tags,
 )
 from app.services.gameio import sha256_file
-from app.services.search import matches, parse_query
+from app.services.search import SHOWS, SORTS, filter_show, has_window, matches, parse_query, sort_songs
 from app.services.parsing import MAX_FUN_FACT, clean_fun_fact, format_time_ms, normalize_tags, parse_time_ms
-from app.services.settings_store import get_clip_seconds, parse_clip_seconds, set_clip_seconds
+from app.services.settings_store import (
+    get_clip_seconds, get_library_view, parse_clip_seconds, set_clip_seconds, set_library_view,
+)
 from app.web import flash, render
 
 router = APIRouter(prefix="/library")
@@ -63,14 +65,29 @@ def _clip_path(request: Request, song: Song) -> Path:
 def library(
     request: Request,
     q: str = "",
+    sort: str = "",
+    show: str = "",
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
 ):
-    songs = session.exec(select(Song).order_by(func.lower(Song.title), Song.id)).all()
+    # The order and the play-window filter are remembered per person: choosing one saves it, and a visit with
+    # nothing chosen (after an edit, say) uses what was chosen last.
+    saved_sort, saved_show = get_library_view(session, user.id)
+    chosen_sort = sort if sort in SORTS else saved_sort
+    chosen_show = show if show in SHOWS else saved_show
+    if (sort in SORTS or show in SHOWS) and (chosen_sort, chosen_show) != (saved_sort, saved_show):
+        set_library_view(session, user.id, chosen_sort, chosen_show)
+    everything = session.exec(select(Song)).all()
+    songs = everything
     query = parse_query(q)
     if not query.empty:  # filtered here rather than in SQL: a library is a few thousand rows at most
         songs = [song for song in songs if matches(query, song.title, song.artist, song.tags)]
-    return render(request, "library.html", user=user, songs=songs, q=q.strip(), clip_seconds=get_clip_seconds(session))
+    songs = sort_songs(filter_show(songs, chosen_show), chosen_sort)
+    return render(
+        request, "library.html", user=user, songs=songs, q=q.strip(), clip_seconds=get_clip_seconds(session),
+        sorts=SORTS, shows=SHOWS, sort=chosen_sort, show=chosen_show, has_window=has_window,
+        total=len(everything), with_window=sum(has_window(s) for s in everything),
+    )
 
 
 @router.post("/clip-length")
@@ -246,6 +263,7 @@ async def edit_submit(
     song.start_ms, song.end_ms = start_ms, end_ms
     song.auto_fill = auto_fill
     song.fun_fact = fun_fact
+    song.updated_at = utcnow()
     session.add(song)
     session.commit()
     flash(request, f"Saved \u201c{song.title}\u201d.", "success")

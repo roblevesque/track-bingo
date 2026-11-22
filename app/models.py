@@ -44,6 +44,7 @@ class Song(SQLModel, table=True):
     end_ms: int | None = None  # None = play to the end
     auto_fill: bool = True  # when one end of the play window is captured, fill in the other from the default clip length
     created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime | None = None  # when the song was last edited; None until it has been
 
     @property
     def tag_list(self) -> list[str]:

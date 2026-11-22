@@ -129,3 +129,56 @@ def test_fun_facts_travel_in_exported_games_and_older_files_still_load():
     manifest["songs"][0]["fun_fact"] = "x" * (MAX_FUN_FACT + 1)
     with pytest.raises(BundleError):
         parse_manifest(manifest)
+
+
+# ---------------------------------------------------------------- library ordering and play-window marker
+
+from datetime import datetime, timedelta  # noqa: E402
+from types import SimpleNamespace  # noqa: E402
+
+from app.services.search import DEFAULT_SHOW, DEFAULT_SORT, SHOWS, SORTS, filter_show, has_window, sort_songs  # noqa: E402
+
+
+def song(id, title, artist="", added=0, edited=None, start=0, end=None):
+    base = datetime(2026, 1, 1)
+    return SimpleNamespace(id=id, title=title, artist=artist, created_at=base + timedelta(days=added),
+                           updated_at=None if edited is None else base + timedelta(days=edited), start_ms=start, end_ms=end)
+
+
+LIBRARY = [
+    song(1, "Waterloo", "ABBA", added=1, end=30000),
+    song(2, "Dancing Queen", "ABBA", added=2),
+    song(3, "killer queen", "Queen", added=3, start=5000),
+    song(4, "Africa", "", added=4, edited=10),
+    song(5, "Believe", "Cher", added=5),
+]
+
+
+def ids(songs):
+    return [s.id for s in songs]
+
+
+def test_a_song_with_a_start_or_end_time_has_a_play_window():
+    assert has_window(song(1, "a", end=1000)) and has_window(song(1, "a", start=1000))
+    assert not has_window(song(1, "a"))
+
+
+def test_every_sort_is_stable_and_case_insensitive():
+    assert ids(sort_songs(LIBRARY, "title")) == [4, 5, 2, 3, 1]  # Africa, Believe, Dancing Queen, killer queen, Waterloo
+    assert ids(sort_songs(LIBRARY, "title_desc")) == [1, 3, 2, 5, 4]
+    assert ids(sort_songs(LIBRARY, "artist")) == [2, 1, 5, 3, 4]  # ABBA (Dancing Queen, Waterloo by title), Cher, Queen; no artist last
+    assert ids(sort_songs(LIBRARY, "added")) == [5, 4, 3, 2, 1]
+    assert ids(sort_songs(LIBRARY, "edited")) == [4, 5, 3, 2, 1]  # edited on day 10 beats everything added earlier
+    assert ids(sort_songs(LIBRARY, "nonsense")) == ids(sort_songs(LIBRARY, DEFAULT_SORT))
+
+
+def test_songs_without_a_window_come_first_when_asked():
+    ordered = sort_songs(LIBRARY, "window")
+    assert ids(ordered)[:3] == [4, 5, 2] and set(ids(ordered)[3:]) == {1, 3}
+
+
+def test_the_play_window_filter():
+    assert ids(filter_show(LIBRARY, "todo")) == [2, 4, 5]
+    assert ids(filter_show(LIBRARY, "done")) == [1, 3]
+    assert ids(filter_show(LIBRARY, "all")) == [1, 2, 3, 4, 5] and ids(filter_show(LIBRARY, "x")) == [1, 2, 3, 4, 5]
+    assert DEFAULT_SORT in SORTS and DEFAULT_SHOW in SHOWS

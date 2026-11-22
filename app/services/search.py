@@ -77,3 +77,46 @@ def matches(query: Query, title: str, artist: str, tags: str) -> bool:
         return False
     haystack = f"{title} {artist} {tags}".lower()
     return all(word in haystack for word in query.words)
+
+
+# ---------------------------------------------------------------- ordering and the play-window filter
+
+SORTS = {
+    "title": "Title (A\u2013Z)",
+    "title_desc": "Title (Z\u2013A)",
+    "artist": "Artist (A\u2013Z)",
+    "added": "Newest added first",
+    "edited": "Recently edited first",
+    "window": "Play window not set first",
+}
+SHOWS = {"all": "All songs", "todo": "Play window not set", "done": "Play window set"}
+DEFAULT_SORT, DEFAULT_SHOW = "title", "all"
+
+
+def has_window(song) -> bool:
+    """A song counts as set up once it has a start or an end time (otherwise it plays as the full track)."""
+    return bool(song.start_ms or song.end_ms)
+
+
+def sort_songs(songs: list, sort: str) -> list:
+    """The songs in the chosen order; ties fall back to title then id, so the order is always stable."""
+    base = lambda s: (s.title.lower(), s.id)  # noqa: E731
+    if sort == "title_desc":
+        return sorted(songs, key=base, reverse=True)
+    if sort == "artist":
+        return sorted(songs, key=lambda s: (not s.artist, s.artist.lower(), *base(s)))  # songs with no artist last
+    if sort == "added":
+        return sorted(songs, key=lambda s: (s.created_at, s.id), reverse=True)
+    if sort == "edited":
+        return sorted(songs, key=lambda s: (s.updated_at or s.created_at, s.id), reverse=True)
+    if sort == "window":
+        return sorted(songs, key=lambda s: (has_window(s), *base(s)))
+    return sorted(songs, key=base)
+
+
+def filter_show(songs: list, show: str) -> list:
+    if show == "todo":
+        return [s for s in songs if not has_window(s)]
+    if show == "done":
+        return [s for s in songs if has_window(s)]
+    return songs

@@ -40,3 +40,30 @@ def set_clip_seconds(session: "Session", seconds: int) -> None:
     row.value = str(seconds)
     session.add(row)
     session.commit()
+
+
+def _view_key(user_id: int) -> str:
+    return f"library_view:{user_id}"
+
+
+def get_library_view(session: "Session", user_id: int) -> tuple[str, str]:
+    """(sort, show) this person last chose on the library page, so the order stays the same from visit to visit."""
+    from app.models import AppSetting
+    from app.services.search import DEFAULT_SHOW, DEFAULT_SORT, SHOWS, SORTS
+
+    row = session.get(AppSetting, _view_key(user_id))
+    sort, _, show = (row.value if row else "").partition("|")
+    return (sort if sort in SORTS else DEFAULT_SORT), (show if show in SHOWS else DEFAULT_SHOW)
+
+
+def set_library_view(session: "Session", user_id: int, sort: str, show: str) -> None:
+    from app.models import AppSetting
+
+    value = f"{sort}|{show}"
+    row = session.get(AppSetting, _view_key(user_id))
+    if row is not None and row.value == value:
+        return
+    row = row or AppSetting(key=_view_key(user_id))
+    row.value = value
+    session.add(row)
+    session.commit()

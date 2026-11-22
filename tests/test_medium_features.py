@@ -378,3 +378,54 @@ def test_the_songs_in_the_library_tab_and_its_csv(app, logged_in, tmp_path):
     assert lines[0] == "Artist,Song,Tags,Games used,Status"
     assert "ABBA,Dancing Queen,70s,0,In library" in lines and "Queen,Killer Queen,,0,By the artist" in lines
     assert not any("Madonna" in line for line in lines)
+
+
+# ---------------------------------------------------------------- library: markers, sorting, remembered view
+
+def names_in_order(html):
+    import re
+    return re.findall(r'<tr id="song-\d+"[^>]*>\s*<td>([^<]*)</td>', html)
+
+
+def get_song_start(app, song_id):
+    from app.models import Song
+    with Session(app.state.engine) as session:
+        return session.get(Song, song_id).start_ms
+
+
+def test_songs_with_and_without_a_play_window_are_marked(app, logged_in, tmp_path):
+    ids = seed_songs(app, logged_in, tmp_path, 2)
+    post(logged_in, f"/library/{ids[0]}/edit", f"/library/{ids[0]}/edit", title="Done", artist="A", tags="", start="0.2")  # the seeded clip is about a second long
+    assert get_song_start(app, ids[0]) == 200  # the edit was accepted
+    html = logged_in.get("/library").text
+    assert html.count('class="window-set"') == 1 and html.count('class="window-todo"') == 1
+    assert "1 of 2 songs have a play window set" in html and "1 still to do" in html
+    only_todo = logged_in.get("/library", params={"show": "todo"}).text
+    assert "Done" not in only_todo and "song 01" in only_todo
+
+
+def test_the_chosen_sort_is_remembered_across_visits_and_edits(app, logged_in, tmp_path):
+    ids = seed_songs(app, logged_in, tmp_path, 3)
+    for song_id, title in zip(ids, ["Bravo", "Alpha", "Charlie"]):
+        post(logged_in, f"/library/{song_id}/edit", f"/library/{song_id}/edit", title=title, artist="A", tags="")
+    assert names_in_order(logged_in.get("/library").text) == ["Alpha", "Bravo", "Charlie"]
+    assert names_in_order(logged_in.get("/library", params={"sort": "title_desc"}).text) == ["Charlie", "Bravo", "Alpha"]
+    assert names_in_order(logged_in.get("/library").text) == ["Charlie", "Bravo", "Alpha"]  # nothing chosen: last choice kept
+    post(logged_in, f"/library/{ids[1]}/edit", f"/library/{ids[1]}/edit", title="Zulu", artist="A", tags="")  # Alpha renamed
+    assert names_in_order(logged_in.get("/library").text) == ["Zulu", "Charlie", "Bravo"]
+    recent = names_in_order(logged_in.get("/library", params={"sort": "edited"}).text)
+    assert recent[0] == "Zulu"  # the song just edited is first
+    assert 'value="edited" selected' in logged_in.get("/library").text
+    assert names_in_order(logged_in.get("/library", params={"sort": "bogus"}).text)[0] == "Zulu"  # bad values are ignored
+
+
+def test_each_person_keeps_their_own_view(app, logged_in, tmp_path):
+    seed_songs(app, logged_in, tmp_path, 2)
+    logged_in.get("/library", params={"sort": "added", "show": "todo"})
+    from tests.conftest import add_user, login
+    add_user(app, username="second")
+    other = new_player(app)
+    login(other, "second")
+    page = other.get("/library").text
+    assert 'value="title" selected' in page and 'value="all" selected' in page
+    assert 'value="added" selected' in logged_in.get("/library").text

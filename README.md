@@ -46,6 +46,10 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   copy or download the songs still to get, or the songs already in the library, from two tabs (Songs to get, Songs in library). There is an Excel and a CSV template (Artist, Song) on the page.
 - **Fun facts:** add a note to any song (on its edit page). While that song plays, only you see it, on the
   console and on the phone remote. Notes travel with exported games.
+- **Play-window markers and sorting:** in the library, a song with a start or end time gets a green marker and one
+  without gets a red marker, with a count of how many are still to do. Sort by title, artist, newest added,
+  recently edited or "not set first", and filter to songs with or without a play window. Each person's choice is
+  remembered, so the order doesn't change under you while you edit.
 - **Searching songs:** after editing a song you return to the same search, scrolled to the song you just edited.
    the library search and the new-game filter match every word. `!tag` leaves out songs
   with that exact tag (`!"classic rock"` for a tag with a space) and `no:tags` finds songs with no tags.
