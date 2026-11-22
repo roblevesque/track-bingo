@@ -11,7 +11,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.db import get_session
 from app.deps import require_user
-from app.models import Game, GameSong, Plan, Song, User, utcnow
+from app.models import Game, GameSong, Plan, Song, Ticket, User, utcnow
 from app.security import check_csrf
 from app.services.clips import (
     ALLOWED_TYPES,
@@ -23,7 +23,8 @@ from app.services.clips import (
     save_upload,
     write_tags,
 )
-from app.services.duplicates import Entry, describe, duplicate_groups, find_duplicate
+from app.services.duplicates import SAME_FILE, Entry, describe, duplicate_groups, find_duplicate
+from app.services.merge import Info, blocking_games, choose_keeper, merged_values, remap_choices, remap_ids
 from app.services.gameio import sha256_file
 from app.services.paging import PER_PAGE_OPTIONS, clean_page, clean_per_page, page_links, paginate
 from app.services.search import SHOWS, SORTS, filter_show, has_window, matches, parse_query, sort_songs
@@ -310,13 +311,150 @@ async def edit_submit(
     return _redirect(_library_url(q, song.id, page))
 
 
+def _pools(session: Session) -> dict[int, set[int]]:
+    pools: dict[int, set[int]] = {}
+    for game_id, song_id in session.exec(select(GameSong.game_id, GameSong.song_id)).all():
+        pools.setdefault(game_id, set()).add(song_id)
+    return pools
+
+
+def _infos(songs, pools: dict[int, set[int]]) -> list[Info]:
+    used: dict[int, int] = {}
+    for pool in pools.values():
+        for song_id in pool:
+            used[song_id] = used.get(song_id, 0) + 1
+    return [Info(s.id, s.tags, s.artist, s.fun_fact, s.start_ms, s.end_ms, used.get(s.id, 0)) for s in songs]
+
+
+def _combined(songs, keeper_id: int, pools: dict[int, set[int]]) -> dict:
+    """What the kept song would hold after the others are folded into it."""
+    infos = _infos(songs, pools)
+    return merged_values(next(i for i in infos if i.id == keeper_id), [i for i in infos if i.id != keeper_id])
+
+
+def _merge_problem(session: Session, user: User, songs: list[Song], pools: dict[int, set[int]]) -> str | None:
+    """Why these songs can't be merged right now, or None."""
+    blocked = blocking_games(pools, {s.id for s in songs})
+    if blocked:
+        names = [g.name for g in session.exec(select(Game).where(Game.id.in_(blocked[:3]))).all()]
+        listed = ", ".join(f"\u201c{n}\u201d" for n in names) + (f" and {len(blocked) - 3} more" if len(blocked) > 3 else "")
+        return f"Two of these songs are in the same game ({listed}), and a card can't hold a song twice. Take one out of that game first."
+    return None
+
+
+def _merge_songs(request: Request, session: Session, user: User, ids: list[int], keeper_id: int) -> tuple[bool, str]:
+    """Fold the other songs into the keeper. Returns (done, message). Nothing changes unless it all can."""
+    songs = session.exec(select(Song).where(Song.id.in_(ids))).all()
+    by_id = {s.id: s for s in songs}
+    if len(by_id) < 2 or keeper_id not in by_id:
+        return False, "Choose the songs to merge, and which one to keep."
+    keeper = by_id[keeper_id]
+    others = [s for s in songs if s.id != keeper_id]
+    for song in others:
+        if not (user.is_admin or song.owner_id == user.id):
+            return False, f"Only the person who uploaded \u201c{song.title}\u201d, or an administrator, can merge it away."
+    pools = _pools(session)
+    problem = _merge_problem(session, user, songs, pools)
+    if problem:
+        return False, problem
+
+    mapping = {o.id: keeper.id for o in others}
+    games_touched = [g for g, pool in pools.items() if pool & set(mapping)]
+    for row in session.exec(select(GameSong).where(GameSong.song_id.in_(list(mapping)))).all():
+        session.delete(row)
+        session.add(GameSong(game_id=row.game_id, song_id=keeper.id))
+    if games_touched:
+        for ticket in session.exec(select(Ticket).where(Ticket.game_id.in_(games_touched))).all():
+            new_cells = remap_ids(list(ticket.cells), mapping)
+            if new_cells != list(ticket.cells):
+                ticket.cells = new_cells
+                session.add(ticket)
+        for game in session.exec(select(Game).where(Game.id.in_(games_touched))).all():
+            new_order = remap_ids(list(game.play_order), mapping)
+            if new_order != list(game.play_order):
+                game.play_order = new_order
+                session.add(game)
+    for plan in session.exec(select(Plan)).all():
+        updated = remap_choices(plan.choices_json, mapping)
+        if updated != plan.choices_json:
+            plan.choices_json = updated
+            session.add(plan)
+
+    values = _combined([keeper] + others, keeper.id, pools)
+    keeper.tags, keeper.artist, keeper.fun_fact = values["tags"], values["artist"], values["fun_fact"]
+    keeper.start_ms, keeper.end_ms = values["start_ms"], values["end_ms"]
+    keeper.updated_at = utcnow()
+    session.add(keeper)
+    files = [_clip_path(request, o) for o in others]
+    for song in others:
+        session.delete(song)
+    session.commit()
+    for path in files:
+        path.unlink(missing_ok=True)
+    detail = f" {len(games_touched)} game{'s' if len(games_touched) != 1 else ''} now use{'s' if len(games_touched) == 1 else ''} it." if games_touched else ""
+    return True, f"Merged {len(others) + 1} songs into \u201c{keeper.title}\u201d.{detail}"
+
+
 @router.get("/duplicates")
 def duplicates_page(request: Request, user: User = Depends(require_user), session: Session = Depends(get_session)):
     songs = {s.id: s for s in session.exec(select(Song)).all()}
     entries = [Entry(s.id, s.title, s.artist, s.sha256) for s in songs.values()]
+    pools = _pools(session)
     used = {sid: n for sid, n in session.exec(select(GameSong.song_id, func.count()).group_by(GameSong.song_id)).all()}
-    groups = [{"kind": g.kind, "songs": [songs[e.id] for e in g.entries]} for g in duplicate_groups(entries)]
-    return render(request, "duplicates.html", user=user, groups=groups, used=used)
+    groups = []
+    for g in duplicate_groups(entries):
+        members = [songs[e.id] for e in g.entries]
+        keeper = choose_keeper(_infos(members, pools))
+        problem = _merge_problem(session, user, members, pools)
+        if not problem:
+            lacking = [s.title for s in members if s.id != keeper and not (user.is_admin or s.owner_id == user.id)]
+            problem = f"You can only merge songs you uploaded (or be an administrator): {lacking[0]}." if lacking else None
+        groups.append({"kind": g.kind, "songs": members, "keeper": keeper, "problem": problem,
+                       "tags": _combined(members, keeper, pools)["tags"]})
+    mergeable_files = sum(1 for g in groups if g["kind"] == SAME_FILE and not g["problem"])
+    return render(request, "duplicates.html", user=user, groups=groups, used=used, mergeable_files=mergeable_files)
+
+
+@router.post("/duplicates/merge")
+async def merge_group(request: Request, user: User = Depends(require_user), session: Session = Depends(get_session)):
+    form = await request.form()
+    check_csrf(request, str(form.get("csrf_token", "")))
+    try:
+        ids = [int(v) for v in form.getlist("ids")]
+        keeper_id = int(str(form.get("keeper_id", "")))
+    except ValueError:
+        flash(request, "Choose the song to keep.", "error")
+        return _redirect("/library/duplicates")
+    done, message = _merge_songs(request, session, user, list(dict.fromkeys(ids)), keeper_id)
+    flash(request, message, "success" if done else "error")
+    return _redirect("/library/duplicates")
+
+
+@router.post("/duplicates/merge-all")
+async def merge_all_identical(request: Request, user: User = Depends(require_user), session: Session = Depends(get_session)):
+    """Merge every group of byte-for-byte identical files into the song that is best to keep. Groups that can't be
+    merged (a game holds two of them, or the songs belong to someone else) are left alone and counted."""
+    form = await request.form()
+    check_csrf(request, str(form.get("csrf_token", "")))
+    songs = {s.id: s for s in session.exec(select(Song)).all()}
+    entries = [Entry(s.id, s.title, s.artist, s.sha256) for s in songs.values()]
+    merged = skipped = 0
+    for group in duplicate_groups(entries):
+        if group.kind != SAME_FILE:
+            continue
+        pools = _pools(session)
+        ids = [e.id for e in group.entries]
+        keeper = choose_keeper(_infos([songs[i] for i in ids], pools))
+        done, _ = _merge_songs(request, session, user, ids, keeper)
+        merged, skipped = merged + done, skipped + (not done)
+    if not merged and not skipped:
+        flash(request, "There were no identical files to merge.", "info")
+    else:
+        text = f"Merged {merged} group{'s' if merged != 1 else ''} of identical files."
+        if skipped:
+            text += f" Left {skipped} alone (a game holds two of the copies, or they belong to someone else)."
+        flash(request, text, "success" if merged else "error")
+    return _redirect("/library/duplicates")
 
 
 @router.post("/{song_id}/delete")

@@ -275,3 +275,25 @@ select { max-width: 100%; }
   table.plan tr { border-bottom: 1px solid var(--border); padding: 0.4rem 0; }
   table.plan td, table.plan th { border-bottom: 0; padding: 0.25rem 0.1rem; }
 }
+
+/* ---- card footer editor ---- */
+.md-toolbar { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0.25rem 0; }
+.md-toolbar button { min-height: 2.5rem; min-width: 2.5rem; padding: 0 0.7rem; }
+.md-count.over { color: var(--danger); font-weight: 600; }
+textarea[name=ticket_footer], textarea[name=footer_text] { resize: vertical; line-height: 1.35; }
+.footer-preview { text-align: center; font-size: 0.8rem; color: #666; background: #fff; border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.4rem 0.6rem; margin-bottom: 0.75rem; }
+.brand-preview-footer div { min-height: 1em; }
+
+/* ---- card text looks ---- */
+fieldset.text-looks { border: 1px solid var(--border); border-radius: 6px; margin: 0.75rem 0; padding: 0.5rem 0.75rem; }
+fieldset.text-looks legend { padding: 0 0.4rem; font-weight: 600; }
+.look h3 { margin: 0.4rem 0 0; font-size: 0.95rem; }
+.look input[type=color] { width: 3.2rem; padding: 0.1rem; }
+.look input[name$=_size] { width: 5rem; }
+.brand-preview-grid div { word-break: break-word; }
+
+/* duplicates: the Keep radio sits next to its word, not stretched like a text field */
+label.check.keep { display: inline-flex; margin: 0 0.6rem 0.2rem 0; }
+label.check.keep input { width: auto; margin: 0; }
+label.check input[type=radio] { width: auto; margin: 0; }

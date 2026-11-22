@@ -55,7 +55,7 @@ def test_accent_can_be_switched_off_again(app, logged_in):
 def test_invalid_input_is_refused_and_nothing_is_saved(app, logged_in):
     assert save(logged_in, use_accent="on", accent_color="teal").status_code == 400
     assert save(logged_in, header_text="x" * 81).status_code == 400
-    assert save(logged_in, footer_text="x" * 121).status_code == 400
+    assert save(logged_in, footer_text="x" * 401).status_code == 400
     assert row(app) is None
 
 
@@ -130,3 +130,12 @@ def test_preview_pdf(app, logged_in):
     assert response.status_code == 200 and response.content.startswith(b"%PDF")
     assert logged_in.get("/branding/preview.pdf?paper=a4").status_code == 200
     assert logged_in.get("/branding/preview.pdf?paper=tabloid").status_code == 400
+
+
+def test_the_branding_footer_can_have_several_lines(app, logged_in):
+    assert save(logged_in, footer_text="The Rusty Anchor \r\n\r\n**Every** Thursday\n*8pm*").status_code == 303
+    assert row(app).footer_text == "The Rusty Anchor\n**Every** Thursday\n*8pm*"
+    page = logged_in.get("/branding").text
+    assert "<textarea" in page and "**Every** Thursday" in page
+    assert save(logged_in, footer_text="1\n2\n3\n4\n5").status_code == 400
+    assert row(app).footer_text == "The Rusty Anchor\n**Every** Thursday\n*8pm*"

@@ -18,9 +18,43 @@
       <code>${GAME.DATE}</code> today's date when the cards are printed, so
       <code>Iron Horse - ${GAME.NAME}</code> prints as &ldquo;Iron Horse - 90s Night&rdquo;. A game can also have its own footer
       on the game page.</p>
-    <label>Footer text <span class="muted">(printed along the bottom of each card)</span>
-      <input name="footer_text" id="footer_text" value="{{ form.footer_text }}" maxlength="120" placeholder="e.g. The Rusty Anchor &middot; every Thursday at 8pm">
-    </label>
+    <div data-footer-editor data-preview="#pv-footer">
+      <label for="footer_text">Footer text <span class="muted">(printed along the bottom of each card; up to four lines)</span></label>
+      <div class="md-toolbar" role="toolbar" aria-label="Formatting">
+        <button type="button" class="secondary" data-md="**" title="Bold (Ctrl+B)" aria-label="Bold"><strong>B</strong></button>
+        <button type="button" class="secondary" data-md="*" title="Italic (Ctrl+I)" aria-label="Italic"><em>I</em></button>
+        <span class="muted md-count" data-count></span>
+      </div>
+      <textarea name="footer_text" id="footer_text" rows="4" maxlength="500" placeholder="e.g. The Rusty Anchor &middot; every Thursday at 8pm">{{ form.footer_text }}</textarea>
+    </div>
+    <p class="muted"><code>**bold**</code> and <code>*italic*</code> work in the footer.</p>
+
+    <fieldset class="text-looks">
+      <legend>Song and band names <span class="muted">(how they print on the cards)</span></legend>
+      {% for key, label in (('title', 'Song name'), ('artist', 'Band name')) %}
+      <div class="look" data-look="{{ key }}">
+        <h3>{{ label }}</h3>
+        <div class="row">
+          <label>Font
+            <select name="{{ key }}_font" id="{{ key }}_font">
+              {% for value, name in families.items() %}<option value="{{ value }}" {% if form[key ~ '_font'] == value %}selected{% endif %}>{{ name }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>Style
+            <select name="{{ key }}_style" id="{{ key }}_style">
+              {% for value, name in styles.items() %}<option value="{{ value }}" {% if form[key ~ '_style'] == value %}selected{% endif %}>{{ name }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>Size <span class="muted">(blank = automatic)</span>
+            <input name="{{ key }}_size" id="{{ key }}_size" value="{{ form[key ~ '_size'] }}" inputmode="decimal" size="4" placeholder="auto">
+          </label>
+          <label>Colour <input type="color" name="{{ key }}_color" id="{{ key }}_color" value="{{ form[key ~ '_color'] }}"></label>
+        </div>
+      </div>
+      {% endfor %}
+      <p class="muted">The size is the largest the text will be: it still shrinks to fit a long name in its square
+        ({{ min_size|int }} to {{ max_size|int }}). A game can print band names only, from its own page.</p>
+    </fieldset>
 
     <div class="row">
       <label class="check"><input type="checkbox" name="use_accent" id="use_accent" {% if form.use_accent %}checked{% endif %}> Use an accent colour</label>
@@ -48,7 +82,7 @@
         <span>Card 1</span>
       </div>
       <div class="brand-preview-grid">
-        {% for i in range(9) %}<div><strong>Song {{ i + 1 }}</strong><br><small>Artist</small></div>{% endfor %}
+        {% for i in range(9) %}<div><strong class="pv-song">Song {{ i + 1 }}</strong><br><small class="pv-artist">Artist</small></div>{% endfor %}
       </div>
       <div class="brand-preview-footer" id="pv-footer"></div>
     </div>
@@ -56,4 +90,5 @@
   </section>
 </div>
 {% endblock %}
-{% block scripts %}<script type="module" src="{{ static_url('branding.js') }}"></script>{% endblock %}
+{% block scripts %}<script type="module" src="{{ static_url('branding.js') }}"></script>
+<script type="module" src="{{ static_url('footer_md.js') }}"></script>{% endblock %}

@@ -200,14 +200,35 @@
     <button type="submit">Download all {{ ticket_numbers|length }} cards (PDF)</button>
   </form>
   <p class="muted">Each card is numbered, so you can check a printed card from the host console.</p>
+  <form method="post" action="/games/{{ game.id }}/card-content" class="stack" id="card-content">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <fieldset>
+      <legend>What each square shows</legend>
+      <label class="check"><input type="radio" name="card_content" value="both" {% if game.card_content == 'both' %}checked{% endif %}> Song and band name</label>
+      <label class="check"><input type="radio" name="card_content" value="artist" {% if game.card_content == 'artist' %}checked{% endif %}> Band name only</label>
+      <label class="check"><input type="radio" name="card_content" value="title" {% if game.card_content == 'title' %}checked{% endif %}> Song name only</label>
+    </fieldset>
+    <p class="muted">Applies to the printed PDF and to the cards on players' phones. A song with no band name shows its
+      song name in a band-only game. The cards themselves don't change, so printed cards stay valid. Fonts, sizes and
+      colours are on the Branding page.</p>
+    <button type="submit" class="secondary">Save</button>
+  </form>
   <form method="post" action="/games/{{ game.id }}/card-footer" class="stack">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label>Footer line for this game's cards
-      <input name="ticket_footer" value="{{ game.ticket_footer }}" maxlength="120"
-             placeholder="e.g. Next week: 90s Night, Thursday 7pm">
-    </label>
-    <p class="muted">Printed at the bottom of every card, handy for announcing next week's game.
+    <div data-footer-editor data-preview="#game-footer-preview" data-game-name="{{ game.name }}">
+      <label for="ticket_footer">Footer for this game's cards</label>
+      <div class="md-toolbar" role="toolbar" aria-label="Formatting">
+        <button type="button" class="secondary" data-md="**" title="Bold (Ctrl+B)" aria-label="Bold"><strong>B</strong></button>
+        <button type="button" class="secondary" data-md="*" title="Italic (Ctrl+I)" aria-label="Italic"><em>I</em></button>
+        <span class="muted md-count" data-count></span>
+      </div>
+      <textarea id="ticket_footer" name="ticket_footer" rows="4" maxlength="500"
+                placeholder="e.g. Next week: **90s Night**&#10;Thursday at 7pm">{{ game.ticket_footer }}</textarea>
+    </div>
+    <p class="muted">Printed at the bottom of every card, handy for announcing next week's game. Up to four lines;
+      <code>**bold**</code> and <code>*italic*</code> work, and so do <code>${GAME.NAME}</code> and <code>${GAME.DATE}</code>.
       Leave it empty to use the footer from your Branding page.</p>
+    <div class="footer-preview" id="game-footer-preview" data-preview hidden aria-label="Footer preview"></div>
     <button type="submit">Save footer</button>
   </form>
   <p class="chips">
@@ -215,3 +236,4 @@
   </p>
 </section>
 {% endblock %}
+{% block scripts %}<script type="module" src="{{ static_url('footer_md.js') }}"></script>{% endblock %}

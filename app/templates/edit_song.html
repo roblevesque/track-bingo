@@ -33,13 +33,13 @@
 
     <div class="row">
       <label>Start <span class="muted">(seconds or m:ss)</span>
-        <input id="start" name="start" value="{{ form.start }}" inputmode="decimal">
+        <input id="start" name="start" value="{{ form.start }}" autocomplete="off" spellcheck="false">
       </label>
       <button type="button" data-capture="start">Use current position</button>
     </div>
     <div class="row">
       <label>End <span class="muted">(blank = to the end)</span>
-        <input id="end" name="end" value="{{ form.end }}" inputmode="decimal">
+        <input id="end" name="end" value="{{ form.end }}" autocomplete="off" spellcheck="false">
       </label>
       <button type="button" data-capture="end">Use current position</button>
     </div>

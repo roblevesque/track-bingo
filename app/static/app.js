@@ -1,3 +1,4 @@
+import { formatTime, parseTime } from "./clip_time.js";
 // Small progressive enhancements. No build step: this file is served as-is.
 
 // Confirm before destructive form submits: <form data-confirm="Are you sure?">
@@ -74,20 +75,8 @@ function setupClipEditor() {
   const startInput = document.querySelector("#start");
   const endInput = document.querySelector("#end");
 
-  const format = (seconds) => {
-    const tenths = Math.round(seconds * 10);
-    const minutes = Math.floor(tenths / 600);
-    const rest = ((tenths % 600) / 10).toFixed(1).padStart(4, "0");
-    return `${minutes}:${rest}`;
-  };
-
-  const parse = (text) => {
-    const trimmed = text.trim();
-    if (!trimmed) return null;
-    const parts = trimmed.split(":").map(Number);
-    if (parts.length > 3 || parts.some((n) => !Number.isFinite(n) || n < 0)) return null;
-    return parts.reduce((total, n) => total * 60 + n, 0);
-  };
+  const format = formatTime;
+  const parse = parseTime;
 
   const autoFill = document.querySelector("#auto-fill");
   const lengthInput = document.querySelector("#clip-length");
@@ -125,13 +114,21 @@ function setupClipEditor() {
   // Typing a time: your own entry is yours; the other end is filled in only if it is empty or was filled in
   // automatically. "change" fires when you leave the box, so half-typed times aren't acted on.
   [[startInput, true], [endInput, false]].forEach(([input, isStart]) => {
-    input.addEventListener("input", () => { delete input.dataset.auto; });
-    input.addEventListener("change", () => {
+    let handled = input.value;  // the text the other end was last worked out from
+    const settle = () => {
+      if (input.value === handled) return;
+      handled = input.value;
       const seconds = parse(input.value);
       if (seconds === null) return;
       fillOther(isStart, seconds, false);
       showPosition();
-    });
+    };
+    input.addEventListener("input", () => { delete input.dataset.auto; });
+    // "change" is the normal moment (leaving the box); "blur" and Enter are belt and braces for browsers that
+    // don't send "change" for text picked from the autocomplete list or pasted.
+    input.addEventListener("change", settle);
+    input.addEventListener("blur", settle);
+    input.addEventListener("keydown", (event) => { if (event.key === "Enter") settle(); });
   });
 
   // Live readout: where the player is, how far into the clip that is, and how long is left.

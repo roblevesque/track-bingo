@@ -40,7 +40,9 @@ ADDITIVE_COLUMNS = {
         ("run_number", "INTEGER NOT NULL DEFAULT 1"),
         ("remote_code", "TEXT NOT NULL DEFAULT ''"),
         ("ticket_footer", "TEXT NOT NULL DEFAULT ''"),
+        ("card_content", "TEXT NOT NULL DEFAULT 'both'"),
     ],
+    "branding": [("text_style_json", "TEXT NOT NULL DEFAULT ''")],
 }
 
 

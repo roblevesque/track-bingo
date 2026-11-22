@@ -5,24 +5,41 @@
 <h1>Find duplicates</h1>
 <p class="muted">Songs that look like copies of each other: the same audio file, or the same title by the same artist
   (ignoring capitals, accents, brackets such as &ldquo;(Remastered)&rdquo; and a leading &ldquo;The&rdquo;). A live
-  version can look like the studio one, so check before deleting. A song that is in a game can't be deleted until that game is.</p>
+  version can look like the studio one, so check before merging or deleting.</p>
+<p class="muted"><strong>Merging</strong> keeps one song and folds the others into it: tags are combined, a missing artist,
+  note or play window is filled in from a copy, and every game, card and saved plan that used a copy now uses the kept
+  song. The copies and their audio files are then deleted.</p>
+
+{% if mergeable_files %}
+<form method="post" action="/library/duplicates/merge-all" class="card"
+      data-confirm="Merge every group of identical files into the song marked Keep? This can't be undone.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <p>{{ mergeable_files }} group{{ '' if mergeable_files == 1 else 's' }} of identical files can be merged automatically.
+    <button type="submit">Merge all identical files</button></p>
+</form>
+{% endif %}
+
 {% if groups %}
 {% for group in groups %}
+{% set gi = loop.index %}
 <section class="card">
   <h2>{{ 'Identical file' if group.kind == 'file' else 'Same title and artist' }}
     <span class="muted">({{ group.songs|length }} songs)</span></h2>
   <table class="plan"><tbody>
   {% for song in group.songs %}
     <tr>
-      <td><strong>{{ song.title }}</strong>{% if song.artist %} &ndash; {{ song.artist }}{% endif %}
+      <td>
+        <label class="check keep"><input type="radio" name="keeper_id" value="{{ song.id }}" form="merge-{{ gi }}"
+                                    {% if song.id == group.keeper %}checked{% endif %}> Keep</label>
+        <strong>{{ song.title }}</strong>{% if song.artist %} &ndash; {{ song.artist }}{% endif %}
         {% for t in song.tag_list %}<span class="tag">{{ t }}</span> {% endfor %}
         <span class="muted">{{ song.original_name }} &middot; added {{ song.created_at.strftime('%b') }} {{ song.created_at.day }}, {{ song.created_at.year }}
-          &middot; {% if used.get(song.id) %}in {{ used[song.id] }} game{{ '' if used[song.id] == 1 else 's' }}{% else %}not in a game{% endif %}</span></td>
+          &middot; {% if used.get(song.id) %}in {{ used[song.id] }} game{{ '' if used[song.id] == 1 else 's' }}{% else %}not in a game{% endif %}
+          {% if song.start_ms or song.end_ms %}&middot; play window set{% endif %}</span></td>
       <td class="actions">
         <a class="button secondary" href="/library/{{ song.id }}/edit">Edit</a>
         {% if user.is_admin or song.owner_id == user.id %}
-        <form method="post" action="/library/{{ song.id }}/delete" class="inline"
-              data-confirm="Delete this song?">
+        <form method="post" action="/library/{{ song.id }}/delete" class="inline" data-confirm="Delete this song?">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <input type="hidden" name="back" value="duplicates">
           <button type="submit" class="secondary danger">Delete</button>
@@ -32,6 +49,17 @@
     </tr>
   {% endfor %}
   </tbody></table>
+  <form method="post" action="/library/duplicates/merge" id="merge-{{ gi }}" class="merge"
+        data-confirm="Merge these {{ group.songs|length }} songs into the one marked Keep? The others are deleted. This can't be undone.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% for song in group.songs %}<input type="hidden" name="ids" value="{{ song.id }}">{% endfor %}
+    {% if group.problem %}
+    <p class="flash error">{{ group.problem }}</p>
+    {% else %}
+    <p class="muted">The kept song will have the tags{% if group.tags %}: {% for t in group.tags.split(',') %}<span class="tag">{{ t }}</span> {% endfor %}{% else %} (none){% endif %}</p>
+    {% endif %}
+    <button type="submit" {% if group.problem %}disabled{% endif %}>Merge into the song marked Keep</button>
+  </form>
 </section>
 {% endfor %}
 {% else %}

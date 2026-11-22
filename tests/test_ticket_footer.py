@@ -48,10 +48,10 @@ def test_a_footer_can_be_cleared(app, logged_in, tmp_path):
 def test_an_overlong_footer_is_refused_and_nothing_changes(app, logged_in, tmp_path):
     game_id = make_game(app, logged_in, tmp_path)
     set_footer(logged_in, game_id, "Keep me")
-    assert set_footer(logged_in, game_id, "x" * 121).status_code == 303
+    assert set_footer(logged_in, game_id, "x" * 401).status_code == 303
     assert footer_of(app, game_id) == "Keep me"
-    set_footer(logged_in, game_id, "x" * 120)
-    assert footer_of(app, game_id) == "x" * 120
+    set_footer(logged_in, game_id, "x" * 400)
+    assert footer_of(app, game_id) == "x" * 400
 
 
 def test_any_host_can_set_it_but_logging_in_is_required(app, logged_in, tmp_path):
@@ -97,3 +97,21 @@ def test_the_footer_survives_export_and_import(app, logged_in, tmp_path):
     response = logged_in.post("/games/import", data={"csrf_token": csrf_token(logged_in, "/games")},
                               files={"bundle": ("g.musicbingo.zip", data, "application/zip")}, follow_redirects=False)
     assert footer_of(app, game_id_from(response)) == "Next week: Quiz Night"
+
+
+def test_a_footer_can_have_several_lines_with_bold_and_italic(app, logged_in, tmp_path):
+    game_id = make_game(app, logged_in, tmp_path)
+    set_footer(logged_in, game_id, "  Next week: **90s Night**  \r\n\r\n *Thursday*   at 7pm\nBring a friend\n${GAME.NAME}")
+    assert footer_of(app, game_id) == "Next week: **90s Night**\n*Thursday* at 7pm\nBring a friend\n${GAME.NAME}"
+    page = logged_in.get(f"/games/{game_id}").text
+    assert '<textarea id="ticket_footer"' in page and "data-footer-editor" in page and "**90s Night**" in page
+    assert logged_in.get(f"/games/{game_id}/cards.pdf").content.startswith(b"%PDF")
+
+
+def test_more_than_four_lines_is_refused_and_nothing_changes(app, logged_in, tmp_path):
+    game_id = make_game(app, logged_in, tmp_path)
+    set_footer(logged_in, game_id, "Keep me")
+    assert set_footer(logged_in, game_id, "1\n2\n3\n4\n5").status_code == 303
+    assert footer_of(app, game_id) == "Keep me"
+    set_footer(logged_in, game_id, "1\n2\n3\n4")
+    assert footer_of(app, game_id) == "1\n2\n3\n4"

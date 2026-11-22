@@ -4,6 +4,7 @@ from sqlmodel import Session, select
 
 from app.models import Branding
 from app.services.branding import on_color
+from app.services.cardtext import loads as load_text_styles
 from app.services.pdf import BrandStyle
 
 
@@ -26,11 +27,14 @@ def brand_style(session: Session, settings, owner_id: int) -> BrandStyle | None:
     if row is None:
         return None
     path = logo_path(settings, row)
+    title_style, artist_style = load_text_styles(row.text_style_json)
     return BrandStyle(
         accent=row.accent_color or None,
         header_text=row.header_text,
         footer_text=row.footer_text,
         logo_png=path.read_bytes() if path else None,
+        title_style=title_style,
+        artist_style=artist_style,
     )
 
 

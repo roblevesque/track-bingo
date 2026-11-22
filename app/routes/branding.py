@@ -13,23 +13,32 @@ from app.models import Branding, Game, User, utcnow
 from app.security import check_csrf
 from app.services.brand_store import branding_row, brand_style, logo_path
 from app.services.branding import (
-    MAX_UPLOAD_BYTES, VARIABLE_HELP, InvalidLogo, normalize_hex, process_logo, unknown_variables,
+    MAX_UPLOAD_BYTES, VARIABLE_HELP, InvalidLogo, clean_footer, footer_problem, normalize_hex, process_logo,
+    unknown_variables,
 )
+from app.services.cardtext import DEFAULT_ARTIST, DEFAULT_TITLE, FAMILIES, MAX_SIZE, MIN_SIZE, STYLES, clean_style, dumps, loads
 from app.services.pdf import build_tickets_pdf, fonts_from_settings
 from app.web import flash, render
 
 router = APIRouter()
 
 DEFAULT_ACCENT = "#5b4bdb"
-MAX_HEADER, MAX_FOOTER = 80, 120
+MAX_HEADER = 80
 
 
 def _redirect(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=303)
 
 
+def _style_values(prefix: str, style) -> dict:
+    return {f"{prefix}_font": style.family, f"{prefix}_style": style.style,
+            f"{prefix}_size": "" if style.size is None else f"{style.size:g}", f"{prefix}_color": style.color}
+
+
 def _form_values(row: Branding | None) -> dict:
+    title_style, artist_style = loads(row.text_style_json if row else "")
     return {
+        **_style_values("title", title_style), **_style_values("artist", artist_style),
         "header_text": row.header_text if row else "",
         "footer_text": row.footer_text if row else "",
         "use_accent": bool(row and row.accent_color),
@@ -42,7 +51,8 @@ def _page(request: Request, user: User, session: Session, *, form=None, errors=(
     has_logo = logo_path(request.app.state.settings, row) is not None
     return render(
         request, "branding.html", status_code=status_code, user=user,
-        form=form or _form_values(row), errors=list(errors),
+        form=form or _form_values(row), errors=list(errors), families=FAMILIES, styles=STYLES,
+        min_size=MIN_SIZE, max_size=MAX_SIZE,
         logo_url=f"/branding/logo?v={row.logo_filename}" if has_logo else None,
     )
 
@@ -60,6 +70,8 @@ async def save_branding(
     use_accent: bool = Form(False),
     accent_color: str = Form(DEFAULT_ACCENT),
     remove_logo: bool = Form(False),
+    title_font: str = Form(""), title_style: str = Form(""), title_size: str = Form(""), title_color: str = Form(""),
+    artist_font: str = Form(""), artist_style: str = Form(""), artist_size: str = Form(""), artist_color: str = Form(""),
     logo: UploadFile | None = File(None),
     csrf_token: str = Form(""),
     user: User = Depends(require_user),
@@ -67,17 +79,21 @@ async def save_branding(
 ):
     check_csrf(request, csrf_token)
     settings = request.app.state.settings
-    header_text, footer_text = " ".join(header_text.split()), " ".join(footer_text.split())
+    header_text, footer_text = " ".join(header_text.split()), clean_footer(footer_text)
     errors: list[str] = []
     if len(header_text) > MAX_HEADER:
         errors.append(f"The header text can be at most {MAX_HEADER} characters.")
-    if len(footer_text) > MAX_FOOTER:
-        errors.append(f"The footer text can be at most {MAX_FOOTER} characters.")
+    if footer_problem(footer_text):
+        errors.append(footer_problem(footer_text))
     for text in (header_text, footer_text):
         bad = unknown_variables(text)
         if bad:
             errors.append(f"{bad[0]} isn't a known variable. You can use {VARIABLE_HELP}.")
             break
+    title_look, problems = clean_style(title_font, title_style, title_size, title_color, DEFAULT_TITLE, "Song names")
+    errors.extend(problems)
+    artist_look, problems = clean_style(artist_font, artist_style, artist_size, artist_color, DEFAULT_ARTIST, "Band names")
+    errors.extend(problems)
     accent = ""
     if use_accent:
         accent = normalize_hex(accent_color) or ""
@@ -96,12 +112,15 @@ async def save_branding(
                 errors.append(f"Logo: {exc}")
 
     if errors:
-        form = {"header_text": header_text, "footer_text": footer_text, "use_accent": use_accent, "accent_color": accent_color}
+        form = {"header_text": header_text, "footer_text": footer_text, "use_accent": use_accent, "accent_color": accent_color,
+                "title_font": title_font, "title_style": title_style, "title_size": title_size, "title_color": title_color,
+                "artist_font": artist_font, "artist_style": artist_style, "artist_size": artist_size, "artist_color": artist_color}
         return _page(request, user, session, form=form, errors=errors, status_code=400)
 
     row = branding_row(session, user.id) or Branding(owner_id=user.id)
     old_logo = row.logo_filename
     row.header_text, row.footer_text, row.accent_color, row.updated_at = header_text, footer_text, accent, utcnow()
+    row.text_style_json = dumps(title_look, artist_look)
     if new_logo is not None:
         name = f"logo-{uuid.uuid4().hex}.png"  # a new name each time also busts browser caches
         (settings.branding_dir / name).write_bytes(new_logo)

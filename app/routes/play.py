@@ -18,6 +18,7 @@ from app.db import get_session
 from app.models import Claim, Game, Round, Song, Team, Ticket
 from app.security import check_csrf
 from app.services.brand_store import brand_context
+from app.services.cardtext import card_text
 from app.services.checker import WIN, verify_claim
 from app.services.events import PLAYERS, Event, stream
 from app.services.patterns import describe_line
@@ -163,10 +164,11 @@ def play_page(request: Request, code: str, session: Session = Depends(get_sessio
     cells = []
     for position, song_id in enumerate(ticket.cells):
         song = songs.get(song_id)
+        shown_title, shown_artist = card_text(song.title, song.artist, game.card_content) if song else ("(song removed)", "")
         cells.append({
             "pos": position,
-            "title": song.title if song else "(song removed)",
-            "artist": song.artist if song else "",
+            "title": shown_title or shown_artist,  # a band-only square shows the band name as its main text
+            "artist": shown_artist if shown_title else "",
             "marked": position in marks,
         })
     return render(request, "play.html", game=game, team=team, ticket=ticket, cells=cells,

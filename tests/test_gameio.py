@@ -40,7 +40,7 @@ def test_ticket_footer_round_trips_and_older_files_still_load():
     assert parse_manifest(manifest).ticket_footer == "Next week: 90s Night"
     del manifest["game"]["ticket_footer"]  # a file exported before this setting existed
     assert parse_manifest(manifest).ticket_footer == ""
-    manifest["game"]["ticket_footer"] = "x" * 121
+    manifest["game"]["ticket_footer"] = "x" * 401
     with pytest.raises(BundleError):
         parse_manifest(manifest)
 

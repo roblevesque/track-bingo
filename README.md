@@ -51,10 +51,28 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   you return to the plan. *Add the tag to the ready songs* tags everything ready. *Make a game from this plan* builds a
   game from the ready songs (a 5x5 card needs 25). Replacing the sheet keeps your choices. Everyone sees all plans;
   only the creator or an admin deletes one.
+- **Card footer:** the footer (on the Branding page, and per game on the game page) is a box of up to four lines
+  (400 characters). `**bold**` and `*italic*` work, with Bold and Italic buttons (or Ctrl+B / Ctrl+I) and a live preview;
+  `${GAME.NAME}` and `${GAME.DATE}` still work. Long lines wrap on the card and the card reserves only as many lines as
+  the footer uses. If you supply your own font for other alphabets, italic prints upright.
 - **Duplicate warnings:** when you upload a song that is the same file as one already in the library, or looks like
   the same song (same title and artist, ignoring capitals, accents, brackets such as "(Remastered)" and a leading
   "The"), it is still added but you get a warning naming the existing song. *Find duplicates* on the Library page
   (`/library/duplicates`) lists groups of copies with Edit and Delete buttons (songs in a game can't be deleted).
+- **Merge duplicates:** on *Find duplicates*, pick the copy to **Keep** (the one already used in the most games is
+  preselected) and press *Merge*. Tags are combined; a missing artist, note or play window is filled in from a copy;
+  every game, printed card, play order and saved plan that used a copy now points at the kept song; the copies and
+  their audio files are deleted. *Merge all identical files* does this for every group of byte-for-byte copies at once.
+  A group is left alone (with the reason shown) if one game holds two of the copies, since a card can't hold a song
+  twice, or if you didn't upload the songs that would be removed (administrators can merge anything). Merging can't be undone.
+- **Card text styling:** on the Branding page choose the font (sans, serif or monospace), style (regular, bold, italic,
+  bold italic), largest size and colour separately for song names and band names, with a live preview. Text still
+  shrinks to fit long names. These looks apply to the printed PDF (and the PDF preview); phone cards keep their own look.
+  A font file you supply replaces the built-in families, and then italic prints upright.
+- **Band names only:** each game page has *What each square shows*: song and band name, band name only, or song name
+  only. It applies to the printed PDF and to players' phone cards; a song with no band name shows its title instead.
+  The cards themselves don't change, so already-printed cards stay valid. The setting is copied by *Run again* and
+  included in game exports.
 - **Fun facts:** add a note to any song (on its edit page). While that song plays, only you see it, on the
   console and on the phone remote. Notes travel with exported games.
 - **Play-window markers and sorting:** in the library, a song with a start or end time gets a green marker and one

@@ -22,6 +22,8 @@ import zipfile
 from dataclasses import dataclass, field, field
 from pathlib import Path
 
+from app.services.branding import clean_footer, footer_problem
+from app.services.cardtext import clean_content
 from app.services.parsing import MAX_FUN_FACT, normalize_tags
 from app.services.patterns import MAX_SHAPE_NAME, MAX_SHAPES_PER_ROUND, MODES, RoundRules, ShapeDef, validate_rules
 
@@ -80,6 +82,7 @@ class GameBundle:
     rounds: list[RoundEntry]
     tickets: list[TicketEntry]
     ticket_footer: str = ""
+    card_content: str = "both"
 
 
 def sha256_file(path: Path) -> str:
@@ -98,7 +101,8 @@ def manifest_dict(bundle: GameBundle) -> dict:
         "format": FORMAT,
         "version": VERSION,
         "exported_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "game": {"name": bundle.name, "grid_size": bundle.grid_size, "ticket_footer": bundle.ticket_footer},
+        "game": {"name": bundle.name, "grid_size": bundle.grid_size, "ticket_footer": bundle.ticket_footer,
+                 "card_content": bundle.card_content},
         "songs": [
             {
                 "ref": s.ref, "title": s.title, "artist": s.artist,
@@ -147,6 +151,15 @@ def _text(value: object, what: str, *, maximum: int, required: bool = False) -> 
     return value
 
 
+def _footer(value: object) -> str:
+    if not isinstance(value, str):
+        raise BundleError("The ticket footer must be text.")
+    value = clean_footer(value)
+    if footer_problem(value):
+        raise BundleError("The ticket footer is too long.")
+    return value
+
+
 def _int(value: object, what: str, *, minimum: int = 0, maximum: int = 10**9, nullable: bool = False) -> int | None:
     if value is None and nullable:
         return None
@@ -186,7 +199,8 @@ def parse_manifest(data: object) -> GameBundle:
         raise BundleError("The game details are missing.")
     name = _text(game.get("name"), "The game name", maximum=100, required=True)
     size = _int(game.get("grid_size"), "The grid size", minimum=MIN_GRID, maximum=MAX_GRID)
-    ticket_footer = _text(game.get("ticket_footer", ""), "The ticket footer", maximum=120)  # absent in older files
+    ticket_footer = _footer(game.get("ticket_footer", ""))  # absent in older files
+    card_content = clean_content(game.get("card_content", "both")) if isinstance(game.get("card_content", "both"), str) else "both"
 
     raw_songs = data.get("songs")
     if not isinstance(raw_songs, list) or not 1 <= len(raw_songs) <= MAX_SONGS:
@@ -266,7 +280,8 @@ def parse_manifest(data: object) -> GameBundle:
             raise BundleError(f"Card {number} repeats a song.")
         tickets.append(TicketEntry(number=number, cells=list(cells)))
     tickets.sort(key=lambda t: t.number)
-    return GameBundle(name=name, grid_size=size, songs=songs, rounds=rounds, tickets=tickets, ticket_footer=ticket_footer)
+    return GameBundle(name=name, grid_size=size, songs=songs, rounds=rounds, tickets=tickets, ticket_footer=ticket_footer,
+                      card_content=card_content)
 
 
 class BundleReader:

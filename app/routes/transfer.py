@@ -84,6 +84,7 @@ def export_game(
         name=game.name,
         grid_size=game.grid_size,
         ticket_footer=game.ticket_footer,
+        card_content=game.card_content,
         songs=[
             SongEntry(ref=ref_of[s.id], title=s.title, artist=s.artist, tags=s.tags, duration_ms=s.duration_ms,
                       start_ms=s.start_ms, end_ms=s.end_ms, sha256=s.sha256, fun_fact=s.fun_fact)
@@ -181,7 +182,7 @@ def perform_import(session: Session, settings, user: User, bundle_path: Path) ->
                 raise ImportProblem("Two songs in this game are the same recording, which cards can't hold.")
 
             game = Game(owner_id=user.id, name=bundle.name, code=_new_code(session), grid_size=bundle.grid_size,
-                        ticket_footer=bundle.ticket_footer)
+                        ticket_footer=bundle.ticket_footer, card_content=bundle.card_content)
             session.add(game)
             session.flush()
             session.add_all(GameSong(game_id=game.id, song_id=song.id) for song in resolved.values())

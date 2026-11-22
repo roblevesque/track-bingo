@@ -15,7 +15,8 @@ from app.models import Claim, Game, GameSong, Round, Song, Team, Ticket, User
 from app.security import check_csrf
 from app.services.series import latest_runs, series_key
 from app.services.brand_store import brand_context, brand_style
-from app.services.branding import VARIABLE_HELP, unknown_variables
+from app.services.cardtext import CONTENTS, card_text, clean_content
+from app.services.branding import VARIABLE_HELP, clean_footer, footer_problem, unknown_variables
 from app.services.pdf import (
     DEFAULT_ORIENTATION, DEFAULT_PER_PAGE, ORIENTATIONS, PAPER_SIZES, TICKETS_PER_PAGE,
     build_tickets_pdf, fonts_from_settings, with_footer,
@@ -405,9 +406,6 @@ def ticket_view(
     )
 
 
-MAX_TICKET_FOOTER = 120
-
-
 @router.post("/{game_id}/card-footer")
 def set_ticket_footer(
     request: Request,
@@ -421,9 +419,10 @@ def set_ticket_footer(
     the host's branding footer is used instead."""
     check_csrf(request, csrf_token)
     game = owned_game(session, user, game_id)
-    text = " ".join(ticket_footer.split())
-    if len(text) > MAX_TICKET_FOOTER:
-        flash(request, f"The card footer can be at most {MAX_TICKET_FOOTER} characters.", "error")
+    text = clean_footer(ticket_footer)
+    problem = footer_problem(text)
+    if problem:
+        flash(request, problem, "error")
         return _redirect(f"/games/{game.id}")
     bad = unknown_variables(text)
     if bad:
@@ -433,6 +432,29 @@ def set_ticket_footer(
     session.add(game)
     session.commit()
     flash(request, "Card footer saved." if text else "Card footer cleared: the branding footer will be used.", "success")
+    return _redirect(f"/games/{game.id}")
+
+
+@router.post("/{game_id}/card-content")
+def set_card_content(
+    request: Request,
+    game_id: int,
+    card_content: str = Form("both"),
+    csrf_token: str = Form(""),
+    user: User = Depends(require_user),
+    session: Session = Depends(get_session),
+):
+    """What each square of this game's cards shows: song and band, band only, or song only. It changes how the
+    cards print and how they look on players' phones; the song pool and the cards themselves are untouched."""
+    check_csrf(request, csrf_token)
+    game = owned_game(session, user, game_id)
+    if card_content not in CONTENTS:
+        flash(request, "Choose one of the listed options.", "error")
+        return _redirect(f"/games/{game.id}")
+    game.card_content = card_content
+    session.add(game)
+    session.commit()
+    flash(request, f"Cards will show: {CONTENTS[card_content].lower()}.", "success")
     return _redirect(f"/games/{game.id}")
 
 
@@ -468,7 +490,8 @@ def tickets_pdf(
     wanted = {song_id for ticket in tickets for song_id in ticket.cells}
     songs = {s.id: s for s in session.exec(select(Song).where(Song.id.in_(wanted))).all()}
     sheets = [
-        (ticket.number, [(songs[sid].title, songs[sid].artist) if sid in songs else ("(song removed)", "") for sid in ticket.cells])
+        (ticket.number, [card_text(songs[sid].title, songs[sid].artist, game.card_content) if sid in songs else ("(song removed)", "")
+                         for sid in ticket.cells])
         for ticket in tickets
     ]
     settings = request.app.state.settings
@@ -522,7 +545,7 @@ def rerun_game(
 
     game = Game(
         owner_id=user.id, name=source.name, code=_new_code(session), grid_size=source.grid_size,
-        series_id=key, run_number=latest + 1,
+        series_id=key, run_number=latest + 1, card_content=source.card_content,
     )
     session.add(game)
     session.flush()

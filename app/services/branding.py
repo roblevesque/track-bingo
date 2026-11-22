@@ -29,6 +29,85 @@ def expand_variables(text: str, *, game_name: str, today: datetime.date | None =
     return VARIABLE_RE.sub(lambda m: values.get(m.group(1).upper(), m.group(0)), text)
 
 
+# ---- the card footer: up to four lines, with **bold** and *italic*
+
+MAX_FOOTER_CHARS = 400
+MAX_FOOTER_LINES = 4
+
+
+def clean_footer(text: str) -> str:
+    """Tidy a footer: spaces collapsed within each line, blank lines dropped, one line per line of text."""
+    lines = (" ".join(line.split()) for line in (text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n"))
+    return "\n".join(line for line in lines if line)
+
+
+def footer_problem(text: str) -> str | None:
+    """Why this (already cleaned) footer can't be used, or None."""
+    if len(text) > MAX_FOOTER_CHARS:
+        return f"The footer can be at most {MAX_FOOTER_CHARS} characters."
+    if text.count("\n") + 1 > MAX_FOOTER_LINES and text:
+        return f"The footer can be at most {MAX_FOOTER_LINES} lines."
+    return None
+
+
+_MARKER = re.compile(r"\*\*|\*")
+
+
+def parse_inline(line: str) -> list[tuple[str, bool, bool]]:
+    """One line of footer text as runs of (text, bold, italic). `**bold**` and `*italic*` (and `***both***`);
+    a marker with no partner, or one with a space on its inside edge (as in "2 * 3"), is just text."""
+    tokens = [(m.start(), m.group()) for m in _MARKER.finditer(line)]
+
+    def opens(i: int) -> bool:
+        pos, kind = tokens[i]
+        after = line[pos + len(kind): pos + len(kind) + 1]
+        if not after or after.isspace():
+            return False
+        return any(t == kind and p > pos + len(kind) and not line[p - 1].isspace() for p, t in tokens[i + 1:])
+
+    def closes(i: int) -> bool:
+        pos = tokens[i][0]
+        return pos > 0 and not line[pos - 1].isspace()
+
+    runs: list[tuple[str, bool, bool]] = []
+    bold = italic = False
+    cursor = 0
+
+    def add(end: int) -> None:
+        if end > cursor:
+            runs.append((line[cursor:end], bold, italic))
+
+    for i, (pos, kind) in enumerate(tokens):
+        if pos < cursor:
+            continue  # part of a marker already used
+        is_bold = kind == "**"
+        active = bold if is_bold else italic
+        if active and closes(i):
+            add(pos)
+        elif not active and opens(i):
+            add(pos)
+        else:
+            continue
+        cursor = pos + len(kind)
+        if is_bold:
+            bold = not bold
+        else:
+            italic = not italic
+    add(len(line))
+    merged: list[tuple[str, bool, bool]] = []
+    for text, b, it in runs:  # join neighbours that ended up with the same style
+        if merged and merged[-1][1:] == (b, it):
+            merged[-1] = (merged[-1][0] + text, b, it)
+        else:
+            merged.append((text, b, it))
+    return merged
+
+
+def parse_footer(text: str) -> list[list[tuple[str, bool, bool]]]:
+    """A cleaned footer as lines of styled runs."""
+    return [parse_inline(line) for line in clean_footer(text).split("\n") if line]
+
+
 class InvalidLogo(ValueError):
     """The upload isn't a usable PNG or JPEG. The message is safe to show to the host."""
 

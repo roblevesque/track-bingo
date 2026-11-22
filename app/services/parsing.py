@@ -17,8 +17,8 @@ def normalize_tags(raw: str) -> str:
 
 
 def parse_time_ms(text: str) -> int | None:
-    """Parse '75', '75.5', '1:15' or '1:15.5' into milliseconds. Blank -> None."""
-    text = text.strip()
+    """Parse '75', '75.5', '1:15', '1:15.5' (or '1:15,5') into milliseconds. Blank -> None."""
+    text = text.strip().replace(",", ".")  # some phone keyboards type a decimal comma
     if not text:
         return None
     parts = text.split(":")
