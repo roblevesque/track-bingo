@@ -58,7 +58,7 @@ def test_export_with_audio_is_a_complete_zip(app, logged_in, tmp_path):
     with zipfile.ZipFile(io.BytesIO(response.content)) as z:
         manifest = json.loads(z.read("manifest.json"))
         assert sum(n.startswith("clips/") for n in z.namelist()) == 12
-    assert manifest["game"] == {"name": "Pub Night", "grid_size": 3, "ticket_footer": ""}
+    assert manifest["game"] == {"name": "Pub Night", "grid_size": 3, "ticket_footer": "", "card_content": "both"}
     assert len(manifest["songs"]) == 12 and len(manifest["tickets"]) == 4 and len(manifest["rounds"]) == 1
     assert all(len(t["cells"]) == 9 for t in manifest["tickets"])
 

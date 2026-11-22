@@ -130,7 +130,7 @@ def songs_by_name(app):
     return {s.original_name: s for s in all_songs(app)}
 
 
-def setup_library(app, client, tmp_path, copies=3, others=9):
+def setup_library(app, client, tmp_path, copies=3, others=12):
     """`copies` identical files a1.mp3...; then `others` different songs o00.mp3... Returns (copy ids, other ids)."""
     for n in range(1, copies + 1):
         upload(client, f"a{n}.mp3", make_bytes())
@@ -150,7 +150,7 @@ def song_ids(app):
 
 def test_the_page_lists_a_merge_form_with_the_best_copy_preselected(app, logged_in, tmp_path):
     copies, others = setup_library(app, logged_in, tmp_path)
-    game_id = game_id_from(create_game(logged_in, [copies[1]] + others[:8], grid_size=3, tickets=3))
+    game_id = game_id_from(create_game(logged_in, [copies[1]] + others[:10], grid_size=3, tickets=3))
     page = logged_in.get("/library/duplicates").text
     assert 'action="/library/duplicates/merge"' in page and "Merge all identical files" in page
     assert re.search(rf'value="{copies[1]}" form="merge-1"\s+checked', page)  # the copy already in a game is the default
@@ -163,7 +163,7 @@ def test_merging_combines_tags_and_points_games_cards_and_plans_at_the_kept_song
     edit(logged_in, a1, title="Keeper", tags="80s")
     edit(logged_in, a2, title="Copy two", tags="rock, 80s", artist="ABBA", start="0.2")
     edit(logged_in, a3, title="Copy three", tags="pop")
-    game_id = game_id_from(create_game(logged_in, [a2] + others[:8], grid_size=3, tickets=4))
+    game_id = game_id_from(create_game(logged_in, [a2] + others[:10], grid_size=3, tickets=4))
     with Session(app.state.engine) as session:
         session.add(Plan(owner_id=1, name="P", choices_json=json.dumps({"abba|": a2, "x|y": 0})))
         session.commit()
@@ -175,7 +175,7 @@ def test_merging_combines_tags_and_points_games_cards_and_plans_at_the_kept_song
         keeper = session.get(Song, a1)
         assert set(keeper.tag_list) == {"80s", "rock", "pop"} and keeper.artist == "ABBA" and keeper.start_ms == 200
         pool = set(session.exec(select(GameSong.song_id).where(GameSong.game_id == game_id)).all())
-        assert pool == {a1, *others[:8]}
+        assert pool == {a1, *others[:10]}
         cells = [c for t in session.exec(select(Ticket).where(Ticket.game_id == game_id)).all() for c in t.cells]
         assert a2 not in cells and a1 in cells
         game = session.get(Game, game_id)
@@ -188,7 +188,7 @@ def test_merging_combines_tags_and_points_games_cards_and_plans_at_the_kept_song
 def test_a_game_holding_two_copies_blocks_the_merge_and_nothing_changes(app, logged_in, tmp_path):
     copies, others = setup_library(app, logged_in, tmp_path)
     a1, a2, a3 = copies
-    create_game(logged_in, [a1, a2] + others[:7], grid_size=3, tickets=3)
+    create_game(logged_in, [a1, a2] + others[:9], grid_size=3, tickets=3)
     before = song_ids(app)
     merge(logged_in, copies, a1)
     page = logged_in.get("/library/duplicates").text
@@ -218,12 +218,12 @@ def test_merge_needs_two_songs_and_a_keeper_among_them(app, logged_in, tmp_path)
 
 
 def test_merge_all_folds_every_identical_group_and_leaves_blocked_ones(app, logged_in, tmp_path):
-    copies, others = setup_library(app, logged_in, tmp_path, copies=2, others=9)
+    copies, others = setup_library(app, logged_in, tmp_path, copies=2, others=12)
     upload(logged_in, "b1.mp3", make_bytes() + b"\x01" * 40)
     upload(logged_in, "b2.mp3", make_bytes() + b"\x01" * 40)
     by = songs_by_name(app)
     b1, b2 = by["b1.mp3"].id, by["b2.mp3"].id
-    create_game(logged_in, [b1, b2] + others[:7], grid_size=3, tickets=3)  # holds both b copies: blocked
+    create_game(logged_in, [b1, b2] + others[:9], grid_size=3, tickets=3)  # holds both b copies: blocked
     r = post(logged_in, "/library/duplicates/merge-all", "/library/duplicates")
     assert r.status_code == 303
     remaining = song_ids(app)

@@ -35,7 +35,7 @@ def test_the_footer_is_saved_tidied_and_shown_again(app, logged_in, tmp_path):
     game_id = make_game(app, logged_in, tmp_path)
     assert set_footer(logged_in, game_id, "  Next week:   90s Night  ").status_code == 303
     assert footer_of(app, game_id) == "Next week: 90s Night"
-    assert 'value="Next week: 90s Night"' in logged_in.get(f"/games/{game_id}").text
+    assert '>Next week: 90s Night</textarea>' in logged_in.get(f"/games/{game_id}").text
 
 
 def test_a_footer_can_be_cleared(app, logged_in, tmp_path):
