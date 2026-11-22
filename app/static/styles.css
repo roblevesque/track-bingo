@@ -182,8 +182,10 @@ a.who { display: inline-flex; align-items: center; min-height: 2.5rem; padding: 
 a.who:hover { background: var(--bg); }
 @media (max-width: 640px) {
   .topbar form.inline { margin-left: auto; }
-  .mainnav { order: 3; flex: 1 1 100%; flex-wrap: nowrap; }  /* a full-width row of equal, finger-sized tabs */
-  .mainnav a { flex: 1 1 0; justify-content: center; min-height: 2.75rem; padding: 0 0.4rem; }
+  /* A full-width row of finger-sized tabs. They share the row, and wrap to a second row on a very narrow screen
+     rather than pushing the page wider than the screen. */
+  .topbar .mainnav { order: 3; flex: 1 1 100%; flex-wrap: wrap; min-width: 0; }
+  .mainnav a { flex: 1 1 auto; justify-content: center; min-height: 2.75rem; padding: 0 0.5rem; font-size: 0.95rem; }
 }
 
 /* ---- phone remote ---- */
@@ -249,7 +251,7 @@ tr.just-edited td { animation: just-edited 3s ease-out; }
 tr.window-set td:first-child { box-shadow: inset 4px 0 0 #2e9e5b; }
 tr.window-todo td:first-child { box-shadow: inset 4px 0 0 #d14b4b; }
 .todo-count { color: #d14b4b; font-weight: 600; }
-.inline-label { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: 0.75rem; }
+.inline-label { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; margin-left: 0.75rem; max-width: 100%; }
 .inline-label select { width: auto; margin: 0; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -264,3 +266,12 @@ td.actions form, div.actions form { display: inline-block; margin: 0 0.35rem 0.3
 .candidate { display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; padding: 0.25rem 0; }
 table.plan progress { width: 8rem; vertical-align: middle; accent-color: var(--accent); }
 #progress progress { height: 1.1rem; accent-color: var(--accent); }
+
+/* ---- narrow screens: nothing may be wider than the screen ---- */
+select { max-width: 100%; }
+@media (max-width: 640px) {
+  table.plan, table.plan tbody, table.plan thead, table.plan tr, table.plan td, table.plan th { display: block; width: auto; }
+  table.plan thead { display: none; }  /* the column names are repeated in each row's content */
+  table.plan tr { border-bottom: 1px solid var(--border); padding: 0.4rem 0; }
+  table.plan td, table.plan th { border-bottom: 0; padding: 0.25rem 0.1rem; }
+}
