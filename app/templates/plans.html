@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Saved plans &middot; {{ app_name }}{% endblock %}
+{% block content %}
+<h1>Saved plans</h1>
+<p class="muted">A saved plan keeps your sheet and checks it against the library every time you open it, so songs you
+  upload later tick themselves off. When enough are ready you can make a game from it.</p>
+<p><a href="/planner">&larr; Check a new sheet</a></p>
+{% if plans %}
+<table class="plan">
+  <thead><tr><th>Plan</th><th>Progress</th><th>Theme tag</th><th></th></tr></thead>
+  <tbody>
+  {% for entry in plans %}
+    <tr>
+      <td><a href="/planner/plans/{{ entry.plan.id }}"><strong>{{ entry.plan.name }}</strong></a>
+        {% if entry.plan.game_id %}<span class="badge have">game made</span>{% endif %}</td>
+      <td>
+        <progress max="100" value="{{ entry.progress.percent }}" aria-label="Songs ready"></progress>
+        {{ entry.progress.ready }} of {{ entry.progress.total }} ready
+        {% if entry.progress.need %}<span class="muted">&middot; {{ entry.progress.need }} to get</span>{% endif %}
+        {% if entry.progress.pick %}<span class="muted">&middot; {{ entry.progress.pick }} to confirm</span>{% endif %}
+      </td>
+      <td>{% if entry.plan.tag %}<span class="tag">{{ entry.plan.tag }}</span>{% endif %}</td>
+      <td><a href="/planner/plans/{{ entry.plan.id }}">Open</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<section class="card"><p>No saved plans yet. <a href="/planner">Check a sheet</a>, then use <em>Save as a plan</em>.</p></section>
+{% endif %}
+{% endblock %}

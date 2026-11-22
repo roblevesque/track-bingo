@@ -11,7 +11,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.db import get_session
 from app.deps import require_user
-from app.models import Game, GameSong, Song, User, utcnow
+from app.models import Game, GameSong, Plan, Song, User, utcnow
 from app.security import check_csrf
 from app.services.clips import (
     ALLOWED_TYPES,
@@ -133,13 +133,16 @@ async def upload(
     request: Request,
     files: list[UploadFile] = File(default=[]),
     tags: str = Form(""),
+    plan_id: str = Form(""),
     csrf_token: str = Form(""),
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
 ):
     check_csrf(request, csrf_token)
     settings = request.app.state.settings
-    upload_tags = normalize_tags(tags)  # applied to every song in this upload
+    plan = session.get(Plan, int(plan_id)) if plan_id.strip().isdigit() else None  # an upload made from a saved plan
+    upload_tags = normalize_tags(f"{tags},{plan.tag}" if plan and plan.tag else tags)  # applied to every song in this upload
+    back = f"/planner/plans/{plan.id}" if plan else "/library"
     added = 0
     problems: list[str] = []
     for upload_file in files:
@@ -184,8 +187,8 @@ async def upload(
     if not added and not problems:
         flash(request, "Choose at least one file to upload.", "error")
     if request.headers.get("x-requested-with") == "xhr":  # the progress-bar upload; the messages above show on the next page
-        return JSONResponse({"redirect": "/library"})
-    return _redirect("/library")
+        return JSONResponse({"redirect": back})
+    return _redirect(back)
 
 
 def _form_values(song: Song) -> dict[str, str]:

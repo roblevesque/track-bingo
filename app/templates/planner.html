@@ -14,6 +14,7 @@
 {% endmacro %}
 {% block content %}
 <h1>Playlist planner</h1>
+<p><a href="/planner/plans">Your saved plans &rarr;</a></p>
 <p class="muted">Check a playlist sheet against your library before you go looking for songs. It shows what you already
   have (with its tags and how often it has been used), what is close, and what you still need to get. Nothing is
   changed unless you add a tag.</p>
@@ -70,6 +71,17 @@
       <span class="badge need">{{ summary.need }} to get</span>
       {% if summary.overused %}<span class="badge overused">{{ summary.overused }} heavily used</span>{% endif %}
     </p>
+  </section>
+
+  <section class="card" id="save-plan">
+    <h2>Keep this as a plan</h2>
+    <p class="muted">A saved plan checks itself against the library every time you open it, so songs you upload later
+      are ticked off automatically, and it can create the game when you are ready.</p>
+    <div class="row">
+      <label>Plan name <input name="plan_name" maxlength="100" placeholder="e.g. Royalty night"></label>
+      <button type="submit" formaction="/planner/plans/save">Save as a plan</button>
+    </div>
+    <p class="muted">The tag above becomes the plan's theme tag.</p>
   </section>
 
   <section class="card" id="lists" data-tabs>

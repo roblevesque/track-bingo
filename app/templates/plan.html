@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}{{ plan.name }} &middot; {{ app_name }}{% endblock %}
+{% macro line_form(item, action, label, tab, song_id=None, primary=false) %}
+<form method="post" action="/planner/plans/{{ plan.id }}/row" class="inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="key" value="{{ item.key }}">
+  <input type="hidden" name="tab" value="{{ tab }}">
+  <input type="hidden" name="action" value="{{ action }}">
+  {% if song_id %}<input type="hidden" name="song_id" value="{{ song_id }}">{% endif %}
+  <button type="submit" {% if not primary %}class="secondary"{% endif %}>{{ label }}</button>
+</form>
+{% endmacro %}
+{% macro line_name(item) %}{{ item.row.artist }}{% if item.row.artist and item.row.song %} &ndash; {% endif %}{{ item.row.song }}{% if not item.row.song %} <span class="muted">(any song)</span>{% endif %}{% endmacro %}
+{% block content %}
+{% set get_items = items|selectattr('state', 'equalto', 'need')|list %}
+{% set pick_items = items|selectattr('state', 'equalto', 'pick')|list %}
+{% set ready_items = items|selectattr('state', 'equalto', 'ready')|list %}
+{% set dropped_items = items|selectattr('state', 'equalto', 'skipped')|list %}
+<p><a href="/planner/plans">&larr; All plans</a></p>
+<h1>{{ plan.name }}</h1>
+
+<section class="card" id="progress">
+  <progress max="100" value="{{ progress.percent }}" aria-label="Songs ready" style="width:100%"></progress>
+  <p><strong>{{ progress.ready }} of {{ progress.total }} ready.</strong>
+    <span class="badge need">{{ progress.need }} to get</span>
+    <span class="badge maybe">{{ progress.pick }} to confirm</span>
+    <span class="badge have">{{ progress.ready }} ready</span>
+    {% if plan.tag %}<span class="tag">{{ plan.tag }}</span>{% endif %}</p>
+  <p class="muted">This is worked out from the library each time you open the plan, so upload a song and it moves to
+    Ready by itself.</p>
+  {% if game %}<p>A game was made from this plan: <a href="/games/{{ game.id }}">{{ game.name }}</a>. You can make another.</p>{% endif %}
+</section>
+
+<section class="card" id="lists" data-tabs>
+  <div class="tabs" role="tablist" aria-label="Plan lines">
+    <button type="button" role="tab" id="tab-get" data-tab="panel-get" aria-controls="panel-get" aria-selected="true">To get ({{ get_items|length }})</button>
+    <button type="button" role="tab" id="tab-confirm" data-tab="panel-confirm" aria-controls="panel-confirm" aria-selected="false">To confirm ({{ pick_items|length }})</button>
+    <button type="button" role="tab" id="tab-ready" data-tab="panel-ready" aria-controls="panel-ready" aria-selected="false">Ready ({{ ready_items|length }})</button>
+    {% if dropped_items %}<button type="button" role="tab" id="tab-dropped" data-tab="panel-dropped" aria-controls="panel-dropped" aria-selected="false">Removed ({{ dropped_items|length }})</button>{% endif %}
+  </div>
+
+  <div role="tabpanel" id="panel-get" aria-labelledby="tab-get">
+    {% if get_items %}
+    <pre id="to-get-text" class="to-get">{% for artist, song, note in needs %}{{ artist }}{% if artist and song %} &ndash; {% endif %}{{ song }}{% if note %}  ({{ note }}){% endif %}
+{% endfor %}</pre>
+    <div class="row">
+      <button type="button" class="secondary" data-copy="#to-get-text">Copy the list</button>
+      <a class="button secondary" href="/planner/plans/{{ plan.id }}/songs-to-get.csv">Download as CSV</a>
+    </div>
+    <table class="plan">
+      <tbody>
+      {% for item in get_items %}
+        <tr id="line-{{ item.row.number }}">
+          <td>{{ line_name(item) }}</td>
+          <td class="actions">{{ line_form(item, 'skip', 'Remove from plan', 'get') }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="muted">Nothing left to get.</p>{% endif %}
+    <h3>Upload songs for this plan</h3>
+    <form method="post" action="/library/upload" enctype="multipart/form-data" class="stack" data-upload>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="plan_id" value="{{ plan.id }}">
+      <input type="file" name="files" accept=".mp3,.ogg,.oga,audio/mpeg,audio/ogg" multiple required>
+      <label>More tags <span class="muted">(optional){% if plan.tag %}; &ldquo;{{ plan.tag }}&rdquo; is added automatically{% endif %}</span>
+        <input name="tags" maxlength="200">
+      </label>
+      <div><button type="submit">Upload</button></div>
+      <div class="upload-progress" hidden>
+        <progress max="100" value="0" aria-label="Upload progress"></progress>
+        <p class="muted" data-upload-text role="status" aria-live="polite"></p>
+      </div>
+    </form>
+    <p class="muted">You come back to this page afterwards, with the new songs matched to their lines.</p>
+  </div>
+
+  <div role="tabpanel" id="panel-confirm" aria-labelledby="tab-confirm" hidden>
+    {% if pick_items %}
+    <p class="muted">The library has something that might be right. Choose one, or say you will get the real thing.</p>
+    <table class="plan">
+      <tbody>
+      {% for item in pick_items %}
+        <tr id="line-{{ item.row.number }}">
+          <td>{{ line_name(item) }}
+            <span class="badge {{ item.result.status }}">{{ 'Artist in library' if item.result.status == 'artist' else 'Close match' }}</span></td>
+          <td>
+            {% for song in item.candidates[:5] %}
+            <div class="candidate">
+              <span><strong>{{ song.title }}</strong>{% if song.artist %} &ndash; {{ song.artist }}{% endif %}
+                {% for t in song.tag_list %}<span class="tag">{{ t }}</span> {% endfor %}
+                <span class="muted">{{ usage_note[song.id] }}</span></span>
+              {{ line_form(item, 'use', 'Use this', 'confirm', song.id, true) }}
+            </div>
+            {% endfor %}
+            <div class="actions">
+              {{ line_form(item, 'none', 'None of these, I\'ll get it', 'confirm') }}
+              {{ line_form(item, 'skip', 'Remove from plan', 'confirm') }}
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="muted">Nothing needs confirming.</p>{% endif %}
+  </div>
+
+  <div role="tabpanel" id="panel-ready" aria-labelledby="tab-ready" hidden>
+    {% if ready_items %}
+    <table class="plan">
+      <tbody>
+      {% for item in ready_items %}
+        <tr id="line-{{ item.row.number }}">
+          <td>{{ line_name(item) }}</td>
+          <td><strong>{{ item.song.title }}</strong>{% if item.song.artist %} &ndash; {{ item.song.artist }}{% endif %}
+            {% for t in item.song.tag_list %}<span class="tag">{{ t }}</span> {% endfor %}
+            <span class="muted">{{ usage_note.get(item.song.id, '') }}{% if item.chosen %} &middot; your choice{% endif %}</span></td>
+          <td class="actions">
+            {% if item.chosen %}{{ line_form(item, 'reset', 'Undo my choice', 'ready') }}{% endif %}
+            {{ line_form(item, 'none', 'Not this one', 'ready') }}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="muted">No songs are ready yet.</p>{% endif %}
+  </div>
+
+  {% if dropped_items %}
+  <div role="tabpanel" id="panel-dropped" aria-labelledby="tab-dropped" hidden>
+    <table class="plan"><tbody>
+    {% for item in dropped_items %}
+      <tr id="line-{{ item.row.number }}"><td>{{ line_name(item) }}</td>
+        <td class="actions">{{ line_form(item, 'restore', 'Put back', 'dropped') }}</td></tr>
+    {% endfor %}
+    </tbody></table>
+  </div>
+  {% endif %}
+</section>
+
+<section class="card" id="make-game">
+  <h2>Make a game from this plan</h2>
+  <p class="muted">Uses the {{ ready|length }} ready song{{ '' if ready|length == 1 else 's' }}{% if progress.need or progress.pick %}
+    ({{ progress.need + progress.pick }} line{{ '' if progress.need + progress.pick == 1 else 's' }} still waiting are left out){% endif %}.</p>
+  <form method="post" action="/planner/plans/{{ plan.id }}/game" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Game name <input name="game_name" value="{{ plan.name }}" maxlength="100" required></label>
+    <label>Grid size <input type="number" name="grid_size" min="{{ min_grid }}" max="{{ max_grid }}" value="{{ default_grid }}"></label>
+    <label>Cards <input type="number" name="ticket_count" min="1" max="{{ max_cards }}" value="{{ default_cards }}"></label>
+    <button type="submit">Create the game</button>
+  </form>
+</section>
+
+<section class="card" id="tag-ready">
+  <h2>Theme tag</h2>
+  <form method="post" action="/planner/plans/{{ plan.id }}/settings" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Plan name <input name="plan_name" value="{{ plan.name }}" maxlength="100" required></label>
+    <label>Theme tag <input name="tag" value="{{ plan.tag }}" maxlength="40" placeholder="e.g. royalty night"></label>
+    <label>Flag songs used in at least <input type="number" name="overuse" min="1" max="99" value="{{ plan.overuse }}" style="width:5rem"> games</label>
+    <button type="submit" class="secondary">Save</button>
+  </form>
+  {% if plan.tag %}
+  <form method="post" action="/planner/plans/{{ plan.id }}/tag" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <p>{{ tagged_count }} of the {{ ready|length }} ready songs already have &ldquo;{{ plan.tag }}&rdquo;.
+      <button type="submit">Add &ldquo;{{ plan.tag }}&rdquo; to the ready songs</button></p>
+  </form>
+  {% endif %}
+</section>
+
+<details class="card">
+  <summary>Replace the sheet</summary>
+  <p class="muted">Paste or choose a newer version. Your choices carry over to lines that are still on it.</p>
+  <form method="post" action="/planner/plans/{{ plan.id }}/sheet" enctype="multipart/form-data" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Paste the cells from Excel <textarea name="pasted" rows="5"></textarea></label>
+    <label>&hellip;or choose a file <input type="file" name="sheet" accept=".xlsx,.csv,.txt,.tsv"></label>
+    <p><button type="submit" class="secondary">Replace the sheet</button></p>
+  </form>
+</details>
+
+{% if can_remove %}
+<details class="card">
+  <summary>Delete this plan</summary>
+  <p class="muted">Removes the plan only. Songs and games made from it are untouched.</p>
+  <form method="post" action="/planner/plans/{{ plan.id }}/delete">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="danger">Delete the plan</button>
+  </form>
+</details>
+{% endif %}
+{% endblock %}

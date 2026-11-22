@@ -42,7 +42,9 @@ document.querySelectorAll("[data-tabs]").forEach((box) => {
       if (step) { event.preventDefault(); select(tabs[(i + step + tabs.length) % tabs.length], true); }
     });
   });
-  select(tabs.find((t) => t.getAttribute("aria-selected") === "true") || tabs[0], false);
+  // A link like #panel-ready opens that tab (the plan page uses this to stay on the tab you were working in).
+  const linked = tabs.find((t) => `#${t.dataset.tab}` === window.location.hash);
+  select(linked || tabs.find((t) => t.getAttribute("aria-selected") === "true") || tabs[0], false);
 });
 
 // Copy buttons: <button data-copy="#id"> copies the text of that element.

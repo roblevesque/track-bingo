@@ -177,3 +177,25 @@ class Claim(SQLModel, table=True):
     songs_played: int  # songs played when the claim arrived; equal values are ties
     detail: str = ""  # for the host: which lines were complete, or how far short it was
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class Plan(SQLModel, table=True):
+    """A saved playlist plan: the sheet, how its columns were read, and the choices made about it.
+
+    Which songs are ready is never stored: it is worked out from the library each time the plan is opened, so a
+    song uploaded later turns its line from "to get" to "ready" by itself. Only the host's decisions are kept
+    (keyed by the line's artist and song, so replacing or reordering the sheet keeps them)."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    owner_id: int = Field(foreign_key="user.id", index=True)
+    name: str = Field(max_length=100)
+    tag: str = Field(default="", max_length=40)  # the theme tag: added to songs uploaded for the plan and to its ready songs
+    raw: str = ""  # the sheet, tab separated
+    roles: str = ""  # artist/song/ignore for each column, comma separated
+    has_header: bool = False
+    overuse: int = 3
+    choices_json: str = "{}"  # line key -> chosen song id (0 = none of the library's songs)
+    skipped_json: str = "[]"  # line keys the host dropped from the plan
+    game_id: int | None = None  # the game made from the plan, if any
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)

@@ -256,3 +256,11 @@ tr.window-todo td:first-child { box-shadow: inset 4px 0 0 #d14b4b; }
 .pager { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin: 0.6rem 0; }
 .pager a, .pager strong { padding: 0.2rem 0.6rem; border-radius: 6px; }
 .pager strong { background: var(--accent); color: var(--accent-text); }
+
+/* ---- saved plans ---- */
+a.button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+td.actions, div.actions { white-space: normal; }
+td.actions form, div.actions form { display: inline-block; margin: 0 0.35rem 0.35rem 0; }
+.candidate { display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; padding: 0.25rem 0; }
+table.plan progress { width: 8rem; vertical-align: middle; accent-color: var(--accent); }
+#progress progress { height: 1.1rem; accent-color: var(--accent); }

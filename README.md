@@ -44,6 +44,13 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   can be in either order: the planner guesses and you correct it with a dropdown. Songs used in 3 or more games
   (adjustable) are flagged, with other songs by the same artist offered. Tick songs to add a theme tag in one go, and
   copy or download the songs still to get, or the songs already in the library, from two tabs (Songs to get, Songs in library). There is an Excel and a CSV template (Artist, Song) on the page.
+  **Saved plans** (`/planner/plans`): press *Save as a plan* after a check. A plan keeps the sheet and is re-checked
+  against the library every time it is opened, so a song you upload later moves from *To get* to *Ready* by itself
+  (progress shows "N of M ready"). Tabs: To get, To confirm (close matches and artist-only lines: choose a song, or
+  "none of these, I'll get it"), Ready, Removed. Upload songs from the plan page and they get the plan's theme tag and
+  you return to the plan. *Add the tag to the ready songs* tags everything ready. *Make a game from this plan* builds a
+  game from the ready songs (a 5x5 card needs 25). Replacing the sheet keeps your choices. Everyone sees all plans;
+  only the creator or an admin deletes one.
 - **Fun facts:** add a note to any song (on its edit page). While that song plays, only you see it, on the
   console and on the phone remote. Notes travel with exported games.
 - **Play-window markers and sorting:** in the library, a song with a start or end time gets a green marker and one
