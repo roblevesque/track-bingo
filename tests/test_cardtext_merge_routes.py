@@ -165,6 +165,9 @@ def test_merging_combines_tags_and_points_games_cards_and_plans_at_the_kept_song
     edit(logged_in, a3, title="Copy three", tags="pop")
     game_id = game_id_from(create_game(logged_in, [a2] + others[:10], grid_size=3, tickets=4))
     with Session(app.state.engine) as session:
+        game = session.get(Game, game_id)  # a draft game has no play order yet, so give it one
+        game.play_order = [a2, *others[:10]]
+        session.add(game)
         session.add(Plan(owner_id=1, name="P", choices_json=json.dumps({"abba|": a2, "x|y": 0})))
         session.commit()
         clip = session.get(Song, a3).filename

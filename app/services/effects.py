@@ -20,6 +20,7 @@ BUILTIN_EFFECTS: tuple[Effect, ...] = (
     Effect("thinking", "Thinking", "effects/thinking.wav", loop=True),  # while a claim is being checked
     Effect("win", "Win", "effects/win.wav"),
     Effect("lose", "Lose", "effects/lose.wav"),
+    Effect("Suspense", "Suspense", "effects/suspense.wav"),
 )
 
 
