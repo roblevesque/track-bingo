@@ -26,7 +26,8 @@
       <p class="muted" data-upload-text role="status" aria-live="polite"></p>
     </div>
   </form>
-  <p class="muted">MP3 or Ogg. Title and artist are read from the file's tags when present.</p>
+  <p class="muted">MP3 or Ogg. Title and artist are read from the file's tags when present. Songs that look like ones
+    you already have are still added, with a warning. <a href="/library/duplicates">Find duplicates</a></p>
   <form method="post" action="/library/clip-length" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label>Default clip length (seconds)

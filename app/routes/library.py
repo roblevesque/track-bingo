@@ -23,6 +23,7 @@ from app.services.clips import (
     save_upload,
     write_tags,
 )
+from app.services.duplicates import Entry, describe, duplicate_groups, find_duplicate
 from app.services.gameio import sha256_file
 from app.services.paging import PER_PAGE_OPTIONS, clean_page, clean_per_page, page_links, paginate
 from app.services.search import SHOWS, SORTS, filter_show, has_window, matches, parse_query, sort_songs
@@ -145,6 +146,8 @@ async def upload(
     back = f"/planner/plans/{plan.id}" if plan else "/library"
     added = 0
     problems: list[str] = []
+    warnings: list[str] = []
+    known = [Entry(i, t, a, h) for i, t, a, h in session.exec(select(Song.id, Song.title, Song.artist, Song.sha256)).all()]
     for upload_file in files:
         name = Path(upload_file.filename or "").name
         if not name:  # browsers send an empty part when no file was chosen
@@ -166,13 +169,19 @@ async def upload(
             problems.append(f"{name}: {exc}")
             continue
         digest = await run_in_threadpool(sha256_file, dest)
+        title = (info.title or Path(name).stem)[:MAX_TEXT]
+        artist = info.artist[:MAX_TEXT]
+        found = find_duplicate(title, artist, digest, known)
+        if found:  # still added (it might be a different recording), but say so
+            warnings.append(f"{name} {describe(*found)}, which is already in the library.")
+        known.append(Entry(0, title, artist, digest))
         session.add(
             Song(
                 owner_id=user.id,
                 filename=stored,
                 original_name=name,
-                title=(info.title or Path(name).stem)[:MAX_TEXT],
-                artist=info.artist[:MAX_TEXT],
+                title=title,
+                artist=artist,
                 tags=upload_tags,
                 duration_ms=info.duration_ms,
                 sha256=digest,
@@ -184,6 +193,12 @@ async def upload(
         flash(request, f"Added {added} song{'s' if added != 1 else ''}.", "success")
     for problem in problems[:4]:
         flash(request, problem, "error")
+    for warning in warnings[:4]:
+        flash(request, warning, "info")
+    if len(warnings) > 4:
+        flash(request, f"{len(warnings) - 4} more possible duplicates. See Find duplicates on the Library page.", "info")
+    elif warnings:
+        flash(request, "Added anyway. Use Find duplicates on the Library page to review or delete copies.", "info")
     if not added and not problems:
         flash(request, "Choose at least one file to upload.", "error")
     if request.headers.get("x-requested-with") == "xhr":  # the progress-bar upload; the messages above show on the next page
@@ -295,33 +310,44 @@ async def edit_submit(
     return _redirect(_library_url(q, song.id, page))
 
 
+@router.get("/duplicates")
+def duplicates_page(request: Request, user: User = Depends(require_user), session: Session = Depends(get_session)):
+    songs = {s.id: s for s in session.exec(select(Song)).all()}
+    entries = [Entry(s.id, s.title, s.artist, s.sha256) for s in songs.values()]
+    used = {sid: n for sid, n in session.exec(select(GameSong.song_id, func.count()).group_by(GameSong.song_id)).all()}
+    groups = [{"kind": g.kind, "songs": [songs[e.id] for e in g.entries]} for g in duplicate_groups(entries)]
+    return render(request, "duplicates.html", user=user, groups=groups, used=used)
+
+
 @router.post("/{song_id}/delete")
 def delete_song(
     request: Request,
     song_id: int,
     q: str = Form(""),
     page: str = Form(""),
+    back: str = Form(""),
     csrf_token: str = Form(""),
     user: User = Depends(require_user),
     session: Session = Depends(get_session),
 ):
     check_csrf(request, csrf_token)
     song = owned_song(session, user, song_id)
+    target = "/library/duplicates" if back == "duplicates" else _library_url(q, page=page)  # the page the delete was made from
     if not (user.is_admin or song.owner_id == user.id):
         flash(request, "Only the person who uploaded a song, or an administrator, can delete it.", "error")
-        return _redirect(_library_url(q, page=page))
+        return _redirect(target)
     used_in = session.exec(
         select(Game.name).join(GameSong, GameSong.game_id == Game.id).where(GameSong.song_id == song.id)
     ).all()
     if used_in:
         names = ", ".join(f"\u201c{name}\u201d" for name in list(dict.fromkeys(used_in))[:3])
         flash(request, f"Can't delete \u201c{song.title}\u201d: it is in the song pool of {names}. Delete those games first.", "error")
-        return _redirect(_library_url(q, page=page))
+        return _redirect(target)
     _clip_path(request, song).unlink(missing_ok=True)
     session.delete(song)
     session.commit()
     flash(request, "Song deleted.", "success")
-    return _redirect(_library_url(q, page=page))
+    return _redirect(target)
 
 
 @router.get("/{song_id}/audio")

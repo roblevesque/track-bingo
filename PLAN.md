@@ -235,5 +235,5 @@ Low-tier additions: `Song.fun_fact`; `app/services/qr.py` (dependency-free QR en
 
 ### Playlist planner (from the host's idea)
 - [X] Step 1: check a pasted or uploaded sheet against the library, with tags, usage counts, close matches, artist-only rows, tag-the-matches and a songs-to-get list/CSV (`/planner`, `app/services/planner.py`, `app/services/sheets.py`)
-- [ ] Step 2: saved plans that update as songs are uploaded, with "create game from this plan"
-- [ ] Step 3: warn about likely duplicates when uploading songs
+- [X] Step 2: saved plans that update as songs are uploaded, with "create game from this plan" (`Plan` model, `app/services/plans.py`, `app/routes/plans.py`, `plan.html`/`plans.html`; `plan_id` on `/library/upload`)
+- [X] Step 3: warn about likely duplicates when uploading songs, plus a Find duplicates page (`app/services/duplicates.py`, `/library/duplicates`)

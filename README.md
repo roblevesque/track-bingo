@@ -51,6 +51,10 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   you return to the plan. *Add the tag to the ready songs* tags everything ready. *Make a game from this plan* builds a
   game from the ready songs (a 5x5 card needs 25). Replacing the sheet keeps your choices. Everyone sees all plans;
   only the creator or an admin deletes one.
+- **Duplicate warnings:** when you upload a song that is the same file as one already in the library, or looks like
+  the same song (same title and artist, ignoring capitals, accents, brackets such as "(Remastered)" and a leading
+  "The"), it is still added but you get a warning naming the existing song. *Find duplicates* on the Library page
+  (`/library/duplicates`) lists groups of copies with Edit and Delete buttons (songs in a game can't be deleted).
 - **Fun facts:** add a note to any song (on its edit page). While that song plays, only you see it, on the
   console and on the phone remote. Notes travel with exported games.
 - **Play-window markers and sorting:** in the library, a song with a start or end time gets a green marker and one

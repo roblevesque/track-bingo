@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Find duplicates &middot; {{ app_name }}{% endblock %}
+{% block content %}
+<p><a href="/library">&larr; Library</a></p>
+<h1>Find duplicates</h1>
+<p class="muted">Songs that look like copies of each other: the same audio file, or the same title by the same artist
+  (ignoring capitals, accents, brackets such as &ldquo;(Remastered)&rdquo; and a leading &ldquo;The&rdquo;). A live
+  version can look like the studio one, so check before deleting. A song that is in a game can't be deleted until that game is.</p>
+{% if groups %}
+{% for group in groups %}
+<section class="card">
+  <h2>{{ 'Identical file' if group.kind == 'file' else 'Same title and artist' }}
+    <span class="muted">({{ group.songs|length }} songs)</span></h2>
+  <table class="plan"><tbody>
+  {% for song in group.songs %}
+    <tr>
+      <td><strong>{{ song.title }}</strong>{% if song.artist %} &ndash; {{ song.artist }}{% endif %}
+        {% for t in song.tag_list %}<span class="tag">{{ t }}</span> {% endfor %}
+        <span class="muted">{{ song.original_name }} &middot; added {{ song.created_at.strftime('%b') }} {{ song.created_at.day }}, {{ song.created_at.year }}
+          &middot; {% if used.get(song.id) %}in {{ used[song.id] }} game{{ '' if used[song.id] == 1 else 's' }}{% else %}not in a game{% endif %}</span></td>
+      <td class="actions">
+        <a class="button secondary" href="/library/{{ song.id }}/edit">Edit</a>
+        {% if user.is_admin or song.owner_id == user.id %}
+        <form method="post" action="/library/{{ song.id }}/delete" class="inline"
+              data-confirm="Delete this song?">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="back" value="duplicates">
+          <button type="submit" class="secondary danger">Delete</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody></table>
+</section>
+{% endfor %}
+{% else %}
+<section class="card"><p>No duplicates found.</p></section>
+{% endif %}
+{% endblock %}
