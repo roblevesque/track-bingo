@@ -18,7 +18,9 @@ from app.services.checker import verify_claim
 from app.services.events import HOST, REMOTE, Event, stream
 from app.services.patterns import MODE_LINES, describe_line, shapes_to_json
 from app.services.shapes_store import resolve_shapes
-from app.services.playlist import PlaylistExhausted, advance, new_play_order, played_ids, reshuffle_remaining, skip_next
+from app.services.playlist import (
+    PlaylistExhausted, advance, new_play_order, planned_order, played_ids, reshuffle_remaining, skip_next,
+)
 from app.services.qr import to_svg
 from app.services.remote import new_code
 from app.services.snapshots import audio_url, broadcast, host_state, remote_info, round_name
@@ -122,7 +124,7 @@ async def start(request: Request, game_id: int, csrf_token: str = Form(""),
     if game.status != "draft":
         raise _conflict("This game has already started.")
     pool = session.exec(select(GameSong.song_id).where(GameSong.game_id == game.id)).all()
-    game.play_order = new_play_order(list(pool))
+    game.play_order = planned_order(list(game.play_order), list(pool))  # the host's order from the game page, or a shuffle
     game.current_index = 0
     game.current_round = 1
     game.status = "active"

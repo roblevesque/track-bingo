@@ -93,6 +93,11 @@ Low priority (done)
 - [X] QR code for the phone remote
 - [X] Song fun facts and notes for the host screen and phone remote
 
+Play order (done)
+- [X] Freely rearrange the play order from the game page: the whole order before the start (Start keeps it), the songs
+  still to come during a game (`POST /games/{id}/playlist/order`, `reorder_remaining` and `planned_order` in
+  `app/services/playlist.py`, `app/static/play_order.js`)
+
 Extra low (done)
 - [X] Suggest clip sections (done by analysing the audio in the browser, `app/static/suggest.js`, since a title alone can't say where the chorus is)
 
@@ -104,7 +109,7 @@ Extra low (done)
 - **Ticket generator:** produces N unique tickets, balances how often each song appears, and rejects duplicates or near-duplicates.
     -   Near-Duplicate tickets are defined as tickets that share approximately 80% of the same song IDs, or the same set of songs in a different permutation.
     -   Implemented as: no two tickets hold the same set of songs, and where the pool allows, any two differ in at least a fifth of their squares. Small pools relax this step by step, and the host is warned whenever tickets end up closer than that.
-- **Play order:** shuffled once when the game starts and stored in the DB, so games are resumable and claims are verifiable. Allow reshuffle on the fly if host decides necessary
+- **Play order:** shuffled once when the game starts (or set by the host on the game page) and stored in the DB, so games are resumable and claims are verifiable. Allow reshuffle on the fly if host decides necessary
 - **Claim checker:** a claim is valid if every song in the claimed row(s) is in the played prefix. Returns one of: `win`, `rejected` (with missing songs), `already_claimed`.
 - **Win types:** chosen by the host per round and changeable at any time: rows, columns and/or diagonals, a configurable number of lines, or full house.
 

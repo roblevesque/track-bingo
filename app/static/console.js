@@ -482,7 +482,7 @@ if (root) {
       if (i === 0 && s.fun_fact) li.append(factLine(s.fun_fact)); // the next song's note, so you can plan your patter
       queue.push(li);
     });
-    const emptyQueue = draft ? "The play order is made when you start the game." : "No songs left.";
+    const emptyQueue = draft ? "The songs are shuffled when you start the game, unless you set an order on the game page." : "No songs left.";
     $("#upcoming").replaceChildren(...(queue.length ? queue : [el("li", emptyQueue, "muted")]));
     $("#upcoming-count").textContent = state.upcoming.length ? `(${state.upcoming.length} to come)` : "";
     $("#played-count").textContent = finishedSongs.length ? `(${finishedSongs.length})` : "";

@@ -69,3 +69,27 @@ def replace_in_remaining(order: list[int], index: int, old_id: int, new_id: int)
     new_order = list(order)
     new_order[index + order[index:].index(old_id)] = new_id
     return new_order
+
+
+def reorder_remaining(order: list[int], index: int, new_tail: list[int]) -> list[int]:
+    """Put the songs still to come in the host's chosen order. The played prefix never changes.
+
+    `new_tail` must hold exactly the unplayed songs, each once; anything else (a song played or added meanwhile,
+    a song twice) is a ValueError, so a stale page can't drop, repeat or replay a song."""
+    tail = list(order[index:])
+    if len(new_tail) != len(tail) or sorted(new_tail) != sorted(tail):
+        raise ValueError("The playlist changed while you were arranging it.")
+    return list(order[:index]) + list(new_tail)
+
+
+def planned_order(planned: list[int], pool: list[int], rng: random.Random | None = None) -> list[int]:
+    """The order to start a game with: the host's planned order where there is one, otherwise a shuffle.
+
+    Songs no longer in the pool are dropped and songs not yet placed go in at random places, so a planned
+    order that fell out of step with the pool still starts a valid game."""
+    in_pool = set(pool)
+    order = [sid for sid in dict.fromkeys(planned) if sid in in_pool]
+    missing = [sid for sid in dict.fromkeys(pool) if sid not in set(order)]
+    if not order:
+        return new_play_order(missing, rng)
+    return insert_into_remaining(order, 0, missing, rng)

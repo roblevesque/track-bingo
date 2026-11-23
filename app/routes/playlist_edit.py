@@ -1,4 +1,5 @@
 """Change a game's song pool after it has been created: add songs, remove songs, or swap one for another.
+Also set the order the songs are played in (before the game starts, or the songs still to come during it).
 
 The cards are fixed once made (so printed cards stay valid), which shapes the rules:
 - a song that has already been played is never changed, so earlier claims stay valid;
@@ -18,7 +19,7 @@ from app.routes.games import owned_game
 from app.routes.play import join_url
 from app.security import check_csrf
 from app.services.playlist import (
-    insert_into_remaining, played_ids, remove_from_remaining, replace_in_remaining,
+    insert_into_remaining, played_ids, remove_from_remaining, reorder_remaining, replace_in_remaining,
 )
 from app.services.snapshots import broadcast
 from app.web import flash
@@ -141,3 +142,58 @@ def replace_song(
     note = f" on {changed} card{'s' if changed != 1 else ''}" if changed else ""
     flash(request, f"Song replaced{note}." + (" Cards you have already printed still show the old song." if changed else ""), "success")
     return _back(game)
+
+
+def _back_to_order(game: Game) -> RedirectResponse:
+    return RedirectResponse(f"/games/{game.id}#play-order", status_code=303)
+
+
+@router.post("/order")
+def set_order(
+    request: Request, game_id: int, song_ids: list[int] = Form(default=[]), expect: str = Form(""),
+    csrf_token: str = Form(""), user: User = Depends(require_user), session: Session = Depends(get_session),
+):
+    """Save the play order arranged on the game page. Before the start it is the whole order (Start keeps it instead of
+    shuffling); during a game it is the songs still to come, and the songs already played never move."""
+    check_csrf(request, csrf_token)
+    game = owned_game(session, user, game_id)
+    stale = "The game moved on while you were arranging the songs, so nothing was saved. Here is the current order: please arrange it again."
+    if game.status == "finished":
+        flash(request, "This game has finished, so its play order can't change.", "error")
+        return _back_to_order(game)
+    if not expect.isdigit() or int(expect) != game.current_index:
+        flash(request, stale, "error")  # a song was played (or the game started) after the page was opened
+        return _back_to_order(game)
+    if game.status == "draft":
+        pool = _pool(session, game)
+        if len(song_ids) != len(pool) or set(song_ids) != pool:
+            flash(request, stale.replace("The game moved on", "The playlist changed"), "error")
+            return _back_to_order(game)
+        game.play_order = list(song_ids)
+    else:
+        try:
+            game.play_order = reorder_remaining(list(game.play_order), game.current_index, song_ids)
+        except ValueError:
+            flash(request, stale, "error")
+            return _back_to_order(game)
+    _commit(request, session, game)
+    flash(request, "Play order saved." if game.status == "active" else
+          "Play order saved. The game will play the songs in this order when you start it.", "success")
+    return _back_to_order(game)
+
+
+@router.post("/order/clear")
+def clear_order(
+    request: Request, game_id: int, csrf_token: str = Form(""),
+    user: User = Depends(require_user), session: Session = Depends(get_session),
+):
+    """Before the start only: forget the planned order, so Start shuffles the songs again."""
+    check_csrf(request, csrf_token)
+    game = owned_game(session, user, game_id)
+    if game.status != "draft":
+        flash(request, "The game has started, so its play order can only be rearranged, not cleared.", "error")
+        return _back_to_order(game)
+    game.play_order = []
+    _commit(request, session, game)
+    flash(request, "Planned order cleared. The songs will be shuffled when you start the game.", "success")
+    return _back_to_order(game)

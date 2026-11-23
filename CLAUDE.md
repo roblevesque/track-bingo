@@ -42,7 +42,8 @@ before changing anything, and keep both up to date with each change.
   `seed_songs` uploads identical audio bytes, so all its songs count as byte-identical duplicates. Tests that need
   distinct songs must upload different bytes. Game creation also refuses pools too small to make distinct cards
   (a 3x3 grid needs roughly a dozen songs for several cards).
-- A draft game has an empty `play_order` until it is started.
+- A draft game has an empty `play_order` until it is started, unless the host saved a planned order on the game page
+  (Start then keeps it; see `planned_order` in `app/services/playlist.py`).
 - When you change a page, check it at desktop width and at phone width (about 390px), and look for horizontal overflow.
 
 ## How the owner likes to work

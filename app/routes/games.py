@@ -196,6 +196,14 @@ def game_detail(
         for s in library if s.id in pool_ids
     ]
     spare_songs = [s for s in library if s.id not in pool_ids]
+    # The play order section: songs already played (fixed), then the ones still to come, which the host can arrange.
+    # A draft game with no planned order lists its songs alphabetically; Start shuffles them unless an order is saved.
+    by_id = {s.id: s for s in library if s.id in pool_ids}
+    order = [sid for sid in game.play_order if sid in by_id]
+    order_played = [by_id[sid] for sid in order[: game.current_index]]
+    order_upcoming = [by_id[sid] for sid in order[game.current_index:]]
+    if game.status == "draft" and not order:
+        order_upcoming = list(by_id.values())
     ticket_numbers = session.exec(select(Ticket.number).where(Ticket.game_id == game.id).order_by(Ticket.number)).all()
     song_count = session.exec(select(func.count(GameSong.song_id)).where(GameSong.game_id == game.id)).one()
     team_count = session.exec(select(func.count(Team.id)).where(Team.game_id == game.id)).one()
@@ -214,6 +222,9 @@ def game_detail(
         shapes=available_shapes,
         playlist=playlist,
         spare_songs=spare_songs,
+        order_played=order_played,
+        order_upcoming=order_upcoming,
+        order_planned=bool(game.play_order),
         ticket_numbers=ticket_numbers,
         song_count=song_count,
         team_count=team_count,

@@ -25,6 +25,12 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   card that completes any ticked shape. Rounds keep their own copy, so deleting a shape never breaks a game.
 - **Editable playlist:** after a game is created, songs can be added, removed (if on no card) or replaced
   (swapped on every card) from the game page, even mid-game. Songs already played can't be changed.
+- **Play order:** the game page has a *Play order* list. Drag songs by their handle (mouse or finger) or use the
+  arrow buttons (to the top, up, down), then **Save order**. Before the game starts, a saved order is the order **Start
+  game** plays them in (without one, Start shuffles them as before; *Forget this order* goes back to that). During a game
+  only the songs still to come can move: the songs already played stay put, and the console updates as soon as you save.
+  If a song is played while you are arranging, the save is refused and the page shows the current order to arrange
+  again, so a stale page can never replay or drop a song.
 - **Live play:** players join with a game code and a team name (no accounts), tap squares to mark
   them, and call Bingo. The server checks each claim against the songs actually played.
 - **Host console:** start, next song, replay, pause, skip, reshuffle the songs not yet played, move
@@ -181,17 +187,19 @@ whatever the app is called.
    week's announcement is never reprinted by accident. The footer is included in game exports.
 6. **Console:** open the host console and share the join code or the `/join/CODE` link. Players
    enter a team name and get a card.
-7. **Play:** press **Start game**, then **Next song** for each clip. The clip plays in the host's
+7. **Play order (optional):** on the game page, arrange the songs under **Play order** and save, before the game or
+   while it runs. Otherwise Start shuffles them.
+8. **Play:** press **Start game**, then **Next song** for each clip. The clip plays in the host's
    browser; players never see song titles, only their own card.
    The right-hand side of the console shows **Now playing and coming up** as one list, with the song on the
    speakers highlighted at the top, and a separate **Played** box beneath it.
-8. **Claims:** when a team taps **Bingo!** the server checks it. The console lists every claim with
+9. **Claims:** when a team taps **Bingo!** the server checks it. The console lists every claim with
    the song count at the time, so ties are visible. A rejected claim has a short cooldown.
-9. **Rounds:** after a win, press **Next round**, or change what counts as a win ("Change what
+10. **Rounds:** after a win, press **Next round**, or change what counts as a win ("Change what
    counts as a win"). The same team can win several rounds.
-10. **Paper cards:** type the card number into **Check a printed card** to see whether it wins the
+11. **Paper cards:** type the card number into **Check a printed card** to see whether it wins the
    current round, and what it is still missing.
-11. **Afterwards:** **End game**, then **Run this game again** from the game page.
+12. **Afterwards:** **End game**, then **Run this game again** from the game page.
 
 ### Phone remote
 
@@ -447,7 +455,7 @@ app/
     auth.py          first-run setup, login, logout, home page
     library.py       song library, duplicates page, merging
     games.py         games, rounds, cards, PDF download, run again
-    playlist_edit.py adding, removing and swapping songs in an existing game
+    playlist_edit.py adding, removing and swapping songs in an existing game; arranging the play order
     shapes.py        custom win shapes
     branding.py      card branding page, logo files, PDF preview
     users.py         user management and the Account page
@@ -487,7 +495,7 @@ app/
     plans.py         saved plans as a live checklist
   templates/         Jinja pages
   static/            styles.css, plain ES modules (app, play, console, live, playback, branding, remote,
-                     suggest, clip_time, footer_md), effects/ (the built-in WAV sounds)
+                     suggest, clip_time, footer_md, play_order), effects/ (the built-in WAV sounds)
 scripts/              generate_effects.py (made the first synthesised sounds; kept for reference)
 tests/
 Dockerfile, compose.yaml, .dockerignore
