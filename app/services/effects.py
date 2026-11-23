@@ -1,6 +1,6 @@
 """Sound effects the host can trigger from the console. Pure Python.
 
-Today there are three built-in effects (see scripts/generate_effects.py). The console builds its
+Today there are four built-in effects, WAV files in app/static/effects/. The console builds its
 buttons from whatever list this returns, so offering a choice of effects later means changing
 where `available_effects` gets its list (for example, adding the host's uploaded files), not the page.
 """

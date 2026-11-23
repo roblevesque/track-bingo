@@ -1,7 +1,7 @@
 # Configuration Variables
 REGISTRY ?= ghcr.io
-GITHUB_USER ?= your-github-username
-IMAGE_NAME ?= your-repo-name
+GITHUB_USER ?= roblevesque
+IMAGE_NAME ?= track-bingo
 TAG ?= $(shell git rev-parse --short HEAD)
 
 # Full image path (must be lowercase for ghcr.io)

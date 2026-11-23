@@ -83,11 +83,10 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
 - **Pages:** a long library is shown 25, 50, 100 or 200 songs at a time (your choice is remembered). Editing or
   deleting a song returns you to the same search and the same page, with the song you edited centred if it is
   still on that page.
-- **Searching songs:** after editing a song you return to the same search, scrolled to the song you just edited.
-   the library search and the new-game filter match every word. `!tag` leaves out songs
+- **Searching songs:** the library search and the new-game filter match every word. `!tag` leaves out songs
   with that exact tag (`!"classic rock"` for a tag with a space) and `no:tags` finds songs with no tags.
-- **Sound effects:** one-click (or number-key) *Thinking*, *Win* and *Lose* sounds from the host console, for
-  the moments around checking a claim.
+- **Sound effects:** one-click (or number-key) *Thinking*, *Win*, *Lose* and *Suspense* sounds from the host
+  console, for the moments around checking a claim.
 - **Background music:** play your whole library, shuffled and quiet, before and after the game.
 - **Printed cards:** download every card as one numbered PDF (one landscape card per page by
   default), hand them out, and check a paper card by number from the console. Each game can have its
@@ -221,17 +220,19 @@ disconnects every phone at once. The remote is off until you turn it on, for eac
 
 ### Sound effects
 
-The console has a **Sound effects** card with three built-in effects: **Thinking** (a ticking loop to play
-while you check a claim), **Win** and **Lose**. Click one, or press its number key (1, 2, 3). Esc, or
+The console has a **Sound effects** card with four built-in effects: **Thinking** (a loop to play while you
+check a claim), **Win**, **Lose** and **Suspense**. Click one, or press its number key (1 to 4). Esc, or
 pressing **Thinking** again, stops it. An effect pauses the current song and cancels any pending automatic
 next song, so press Resume or Next song when you are ready to carry on. Effects play from the host's
 computer, like the songs, so players hear them in the room.
 
-The effects are original sounds synthesised by `scripts/generate_effects.py` (standard library only).
-To change them, edit the notes there and run `uv run python scripts/generate_effects.py`; a test checks
-that the committed files match the script. The console builds its buttons from the list in
-`app/services/effects.py`, so offering more effects, or your own uploads, later means changing that list
-rather than the page.
+The effects are WAV files in `app/static/effects/`. To change one, replace its file with a mono, 16-bit WAV
+under 6 MB (the tests check this, and that the Thinking loop joins up without a click). The console builds
+its buttons from the list in `app/services/effects.py`, so offering more effects, or your own uploads, later
+means changing that list rather than the page.
+
+`scripts/generate_effects.py` made the first, synthesised versions of Thinking, Win and Lose. It is kept for
+reference only: running it overwrites the current Thinking, Win and Lose files with the old synthesised ones.
 
 ### Background music
 
@@ -444,16 +445,21 @@ app/
   web.py             template rendering, flash messages, error page
   routes/
     auth.py          first-run setup, login, logout, home page
-    library.py       song library
+    library.py       song library, duplicates page, merging
     games.py         games, rounds, cards, PDF download, run again
+    playlist_edit.py adding, removing and swapping songs in an existing game
+    shapes.py        custom win shapes
     branding.py      card branding page, logo files, PDF preview
     users.py         user management and the Account page
     transfer.py      game export and import
     run.py           host console and its actions
     play.py          joining, marking, claiming (player side)
     remote.py        the phone remote: pairing and relaying commands
+    planner.py       playlist planner (check a sheet against the library)
+    plans.py         saved plans
   services/          pure Python where possible (no web framework)
     patterns.py      what counts as a win
+    shapes_store.py  looking up custom win shapes
     checker.py       claim verification
     ticket_gen.py    card generation
     playlist.py      play order
@@ -461,18 +467,28 @@ app/
     permissions.py   account rules
     effects.py       the list of sound effects offered in the console
     remote.py        pairing codes, command checking, the phone's view of the game
+    qr.py            QR code encoder (SVG) for the phone remote
     gameio.py        the game export file format
     events.py        live-update hub (Server-Sent Events)
     snapshots.py     state sent to players and to the host
     pdf.py           printable cards (reportlab)
-    branding.py      colours and logo processing (Pillow)
+    cardtext.py      how song and band names look on cards, and what each square shows
+    branding.py      colours, logo processing (Pillow) and footer markup
     brand_store.py   loads a host's branding for PDFs and pages
     clips.py         audio files and tags (mutagen)
     parsing.py       tags and time values
+    search.py        library search (`!tag`, `no:tags`)
+    paging.py        splitting long lists into pages
+    settings_store.py site-wide settings (default clip length)
+    duplicates.py    spotting copies of a song
+    merge.py         merging copies into one song
+    sheets.py        reading pasted, CSV and .xlsx playlist sheets; the templates
+    planner.py       matching sheet rows against the library
+    plans.py         saved plans as a live checklist
   templates/         Jinja pages
-  static/            styles.css, plain ES modules (app, play, console, live, playback, branding),
-                     effects/ (the built-in WAV sounds)
-scripts/              generate_effects.py (rebuilds the built-in sounds)
+  static/            styles.css, plain ES modules (app, play, console, live, playback, branding, remote,
+                     suggest, clip_time, footer_md), effects/ (the built-in WAV sounds)
+scripts/              generate_effects.py (made the first synthesised sounds; kept for reference)
 tests/
 Dockerfile, compose.yaml, .dockerignore
 ```
@@ -499,9 +515,11 @@ Dockerfile, compose.yaml, .dockerignore
 
 ## Upgrading
 
-New tables are created on start-up. Columns added to existing tables since the first release
-(`game.current_round`, `game.series_id`, `game.run_number`, `game.remote_code`, the account flags on `user`, `song.sha256`) are added by a small built-in migration,
-so an existing `data/bingo.db3` keeps working. Add Alembic before real users depend on the data.
+New tables are created on start-up. Columns added to existing tables since the first release are added by a
+small built-in migration (`ADDITIVE_COLUMNS` in `app/db.py`: the account flags on `user`; `song.sha256`,
+`auto_fill`, `fun_fact` and `updated_at`; `round.shapes_json`; `game.current_round`, `series_id`, `run_number`,
+`remote_code`, `ticket_footer` and `card_content`; `branding.text_style_json`), so an existing `data/bingo.db3`
+keeps working. Add Alembic before real users depend on the data.
 
 ## Known limitations
 
@@ -521,6 +539,4 @@ so an existing `data/bingo.db3` keeps working. Add Alembic before real users dep
 
 ## Possible next steps
 
-From the "Later" list in PLAN.md: game import/export, a permissions model for multiple hosts,
-sound effects the host can trigger (thinking music, win and lose sounds), music before and after
-the game, and a phone remote for the host.
+From the "Later" list in PLAN.md: configurable sound effects (choose from an assortment, or upload your own).

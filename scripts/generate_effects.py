@@ -3,7 +3,10 @@
     uv run python scripts/generate_effects.py            # writes app/static/effects/*.wav
 
 The sounds are synthesised from scratch (sine harmonics, envelopes), so they are original, tiny and
-free of licensing questions. Tweak the notes below and rerun to change them. Standard library only.
+free of licensing questions. Standard library only.
+
+Superseded: the effects in app/static/effects/ have since been replaced by other files. This script is kept
+for reference only. Running it OVERWRITES the current thinking, win and lose files with the old synthesised ones.
 """
 
 import math

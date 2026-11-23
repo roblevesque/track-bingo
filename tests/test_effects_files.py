@@ -30,7 +30,7 @@ def test_the_registry_is_sensible():
 @pytest.mark.parametrize("effect", BUILTIN_EFFECTS, ids=lambda e: e.id)
 def test_each_built_in_effect_is_a_usable_audio_file(effect):
     path = STATIC / effect.file
-    assert path.is_file(), f"{effect.file} is missing: run scripts/generate_effects.py"
+    assert path.is_file(), f"{effect.file} is missing from app/static/"
     samples, rate = read_wav(path)
     seconds = len(samples) / rate
     # assert (4 <= seconds <= 16) if effect.loop else (1 <= seconds <= 4)

@@ -12,7 +12,7 @@ In Music Bingo, the numbers of normal bingo are replaced by songs. Players liste
 - Host creates games from their own library of song clips
 - Players join from any browser using a game code
 - Live play: host plays clips, players mark tickets, claims are verified by the server
-- Simple deployment: `pip install` and run, or a single Docker container
+- Simple deployment: `uv sync` and run, or a single Docker container
 - No Node.js, npm, bundlers or transpilers at any stage
 
 ### Non-Goals (for now)
@@ -61,11 +61,11 @@ Or in Docker: `docker compose up --build`.
 
 ### Later
 - [X] Ticket branding via web interface
-- [ ] Remaining playlist visible from host console, not just next up
-- [ ] Related to above perhaps, but host console more completely and effectively using screen real estate
+- [X] Remaining playlist visible from host console, not just next up (the "Now playing and coming up" list)
+- [X] Related to above perhaps, but host console more completely and effectively using screen real estate (two columns on a wide screen)
 - [X] Game import/export
 - [X] Permissions model to allow some users to add more users, or deny others the abillity to create games (all accounts share one library, game list and branding; only a creator or an admin can delete)
-- [X] Host triggerable sfx events (built-in win, lose and thinking sounds). For example, 'thinking' music while checking tickets, win and lose sfx. 
+- [X] Host triggerable sfx events (built-in thinking, win, lose and suspense sounds). For example, 'thinking' music while checking tickets, win and lose sfx. 
 - [ ] Configurable sound effects: choose from an assortment, or upload your own
 - [X] Pre and post game music playing (plays the host's whole library, shuffled; a commercial service was left out). Possibly from commercial service, or from pool of music already available. 
 - [X] Host remote (pair a phone with a code; next song, pause, replay, skip, effects, bingo alert). Allow host to pause music, trigger events from mobile device
@@ -136,11 +136,13 @@ music-bingo2/
 │   ├── main.py            # app factory, error pages
 │   ├── config.py, db.py, models.py, security.py, deps.py, web.py
 │   ├── backup.py          # python -m app.backup create|restore
-│   ├── routes/            # auth, library, games, run (host console), play (players)
-│   ├── services/          # patterns, checker, ticket_gen, playlist, series, events (SSE hub),
-│   │                      # snapshots, pdf, clips, parsing
+│   ├── routes/            # auth, library, games, playlist_edit, shapes, run (host console), play (players),
+│   │                      # remote, branding, users, transfer, planner, plans
+│   ├── services/          # patterns, checker, ticket_gen, playlist, series, events (SSE hub), snapshots,
+│   │                      # pdf, cardtext, clips, parsing, search, duplicates, merge, planner, plans, sheets, ...
 │   ├── templates/         # Jinja pages
-│   └── static/            # styles.css, app.js, play.js, console.js, live.js, playback.js
+│   └── static/            # styles.css and plain ES modules; effects/ (built-in sound effect WAVs)
+├── scripts/               # generate_effects.py (the first synthesised effects; kept for reference)
 ├── data/                  # bingo.db3, clips/, secret_key (gitignored)
 ├── tests/
 ├── pyproject.toml, uv.lock
