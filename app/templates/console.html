@@ -38,14 +38,14 @@
         <audio id="preload-audio" preload="auto" hidden></audio>
       </section>
 
-      <section class="card">
-        <h2>Sound effects</h2>
-        <div id="effects" class="row"></div>
-        <p class="muted" id="effects-hint">Number keys play the effects in the order shown; Esc stops one. An effect
-          pauses the song, so press Resume or Next song afterwards. &ldquo;Thinking&rdquo; loops until you stop it.</p>
-        <audio id="effect-audio" preload="auto"></audio>
+      <section class="card" id="queue-card">
+        <h2>Now playing and coming up <span id="upcoming-count" class="muted"></span></h2>
+        <p class="muted" id="progress"></p>
+        <ol id="upcoming" class="plain playlist scroll-list"><li class="muted">The play order is made when you start the game.</li></ol>
+        <p class="muted">Only you can see the titles on this page.</p>
       </section>
 
+    
       <details class="card" id="bg-card">
         <summary><strong>Background music</strong> <span class="muted">(before and after the game)</span></summary>
         <p class="muted">Plays your library, shuffled, track after track, leaving out the songs in this game's playlist so nothing gets spoiled. It stops by itself when the game starts.</p>
@@ -66,7 +66,10 @@
         <ul id="claims" class="plain"><li class="muted">No claims yet.</li></ul>
       </section>
 
-      <section class="card">
+    </div>
+
+    <div class="console-col">
+            <section class="card">
         <h2>Round</h2>
         <p id="round-text"></p>
         <p class="row"><button id="btn-next-round" type="button">Next round</button>
@@ -105,19 +108,27 @@
           </form>
         </details>
       </section>
-    </div>
 
-    <div class="console-col">
-      <section class="card" id="queue-card">
-        <h2>Now playing and coming up <span id="upcoming-count" class="muted"></span></h2>
-        <p class="muted" id="progress"></p>
-        <ol id="upcoming" class="plain playlist scroll-list"><li class="muted">The play order is made when you start the game.</li></ol>
-        <p class="muted">Only you can see the titles on this page.</p>
+      <section class="card">
+        <h2>Sound effects</h2>
+        <div id="effects" class="row"></div>
+        <p class="muted" id="effects-hint">Number keys play the effects in the order shown; Esc stops one. An effect
+          pauses the song, so press Resume or Next song afterwards. &ldquo;Thinking&rdquo; loops until you stop it.</p>
+        <audio id="effect-audio" preload="auto"></audio>
       </section>
 
       <section class="card" id="played-card">
         <h2>Played <span id="played-count" class="muted"></span></h2>
         <ol id="played" class="plain playlist scroll-list"><li class="muted">Nothing has been played yet.</li></ol>
+      </section>
+
+      <section class="card">
+        <h2>Check a printed card</h2>
+        <form id="check-form" class="row">
+          <label>Card number <input name="ticket_number" type="number" min="1" required></label>
+          <button type="submit">Check</button>
+        </form>
+        <p id="check-result" class="flash" hidden></p>
       </section>
 
       <section class="card" id="remote-card">
@@ -139,15 +150,6 @@
             <button id="remote-turn-off" type="button" class="secondary danger">Turn off</button>
           </div>
         </div>
-      </section>
-
-      <section class="card">
-        <h2>Check a printed card</h2>
-        <form id="check-form" class="row">
-          <label>Card number <input name="ticket_number" type="number" min="1" required></label>
-          <button type="submit">Check</button>
-        </form>
-        <p id="check-result" class="flash" hidden></p>
       </section>
 
       <section class="card">
