@@ -55,3 +55,5 @@ before changing anything, and keep both up to date with each change.
   bug, so read the test before changing the app.
 - Merging duplicate songs and deleting are irreversible; make that clear in the UI and in the README.
 - After every change, commit it to git so rollback is easy and possible. Push only after it's been tested.
+- Keep commit messages short and sweet (a one-line summary, no long body). Put the longer, changelog-style detail in
+  `CHANGELOG.md` (newest first, dated sections with Added / Changed / Fixed / Removed) in the same commit.
