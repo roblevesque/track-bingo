@@ -34,11 +34,17 @@ LEADING = 1.15
 MIN_FONT = 5.0
 
 
+# The grid prints in black whatever the accent colour: a pale accent, printed in grayscale or on a toner-saving
+# setting, came out too faint to see. Widths in points.
+CELL_LINE = 1.0
+FRAME_LINE = 1.5
+
+
 @dataclass(frozen=True)
 class BrandStyle:
     """The host's ticket branding. Every part is optional."""
 
-    accent: str | None = None  # "#rrggbb": header band and square borders
+    accent: str | None = None  # "#rrggbb": the header band (the grid always prints black)
     header_text: str = ""  # shown instead of the game name
     footer_text: str = ""
     logo_png: bytes | None = None  # already validated by services.branding.process_logo
@@ -181,10 +187,10 @@ def shorten(text: str, font: str, size: float, width: float) -> str:
     return text + "\u2026"
 
 
-def _draw_cell(c, x, y, w, h, title, artist, fonts, border, title_style=DEFAULT_TITLE, artist_style=DEFAULT_ARTIST):
-    c.setStrokeColor(border)
+def _draw_cell(c, x, y, w, h, title, artist, fonts, title_style=DEFAULT_TITLE, artist_style=DEFAULT_ARTIST):
+    c.setStrokeColor(black)
     c.setFillColor(black)
-    c.setLineWidth(0.6)
+    c.setLineWidth(CELL_LINE)
     c.rect(x, y, w, h)
     pad = 3
     inner_w, inner_h = w - 2 * pad, h - 2 * pad
@@ -265,15 +271,17 @@ def _draw_ticket(c, x, y, w, h, *, game_name, number, size, cells, fonts, brand,
     grid_top = top - HEADER_HEIGHT
     cell_w = w / size
     cell_h = (grid_top - grid_bottom) / size
-    border = accent if accent else black
     for row in range(size):
         for col in range(size):
             title_text, artist = cells[row * size + col]
             _draw_cell(
                 c, x + col * cell_w, grid_top - (row + 1) * cell_h, cell_w, cell_h,
-                printable(title_text, fonts), printable(artist, fonts), fonts, border,
+                printable(title_text, fonts), printable(artist, fonts), fonts,
                 brand.title_style or DEFAULT_TITLE, brand.artist_style or DEFAULT_ARTIST,
             )
+    c.setStrokeColor(black)  # a heavier frame round the whole grid, drawn last so nothing covers it
+    c.setLineWidth(FRAME_LINE)
+    c.rect(x, grid_bottom, w, grid_top - grid_bottom)
 
 
 def _draw_cut_lines(c, page_w, page_h, cols, rows, slot_w, slot_h):

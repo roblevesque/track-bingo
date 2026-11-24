@@ -37,7 +37,6 @@ if (form) {
     look(".pv-song", "title", 12);
     look(".pv-artist", "artist", 10);
     const accent = $("#use_accent").checked ? $("#accent_color").value : "";
-    preview.style.setProperty("--brand", accent || "currentColor");
     header.style.background = accent || "transparent";
     header.style.color = accent ? readableOn(accent) : "inherit";
     logo.hidden = !logoUrl;

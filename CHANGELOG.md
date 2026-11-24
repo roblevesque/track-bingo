@@ -3,6 +3,15 @@
 The longer story behind each change. Commit messages stay short; the detail lives here.
 Newest first. Earlier history is in `git log` and in PLAN.md.
 
+## 2026-11-24
+
+### Fixed
+- **Card borders didn't print.** The grid on printed cards was drawn in the branding accent colour at 0.6pt, which
+  a pale accent turns into a near-invisible line on a grayscale or toner-saving printer (it looked fine in the PDF).
+  The grid now always prints in black: 1pt between squares and a 1.5pt frame round the whole grid. The accent colour
+  still fills the header band. The Branding page preview shows black squares to match. Only the styling changed, so
+  cards already printed stay valid.
+
 ## 2026-11-23
 
 ### Added
@@ -21,6 +30,7 @@ Newest first. Earlier history is in `git log` and in PLAN.md.
   steps lists only what is left, and the two console items already delivered are ticked.
 - `scripts/generate_effects.py` is reference only: running it overwrites the current Thinking, Win and Lose sounds.
 - Makefile defaults point at the real image name (`roblevesque/track-bingo`).
+- Changed order and location of cards on host console.
 
 ### Removed
 - `app/static/effects/backups/` (old WAVs that were unused but publicly served).
