@@ -40,7 +40,8 @@ if (form) {
     const accent = $("#use_accent").checked ? $("#accent_color").value : "";
     header.style.background = accent || "transparent";
     header.style.color = accent ? readableOn(accent) : "inherit";
-    footer.style.background = accent || "transparent"; // the footer text stays black, as on the printed card
+    footer.style.background = accent || "transparent";
+    footer.style.color = accent ? readableOn(accent) : "#000"; // black, or white on a dark accent, as printed
     logo.hidden = !logoUrl;
     if (logoUrl) logo.src = logoUrl;
   }

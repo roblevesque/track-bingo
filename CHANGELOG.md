@@ -9,7 +9,8 @@ Newest first. Earlier history is in `git log` and in PLAN.md.
 - **Printed card layout.** The header text is larger (22pt on a one-per-page card, 14pt on smaller ones). The card
   number drops the word "Card" and sits larger in a circle at the right of the header. The logo moves from the header
   to the bottom left, sized to the footer band (up to 50pt tall, or 30pt on smaller cards). The footer text is
-  right-aligned and black, on a band filled with the accent colour (no band without an accent). The Branding page
+  right-aligned on a band filled with the accent colour (no band without an accent). Its text is black, or white
+  when the accent is too dark for black to read, using the same rule as the header. The Branding page
   preview and the game page footer preview follow the new look. Cards keep the same songs, so printed ones stay valid.
 
 ### Fixed

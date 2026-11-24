@@ -257,7 +257,7 @@ def _draw_ticket(c, x, y, w, h, *, game_name, number, size, cells, fonts, brand,
     c.setFont(fonts.bold, title_size)
     c.drawString(left, cy - title_size * 0.35, shorten(title, fonts.bold, title_size, cx - diameter / 2 - 8 - left))
 
-    # ---- footer band: logo bottom left, text right-aligned and black
+    # ---- footer band: logo bottom left, text right-aligned (black, or white on a dark accent, as in the header)
     logo_w = logo_h = 0.0
     if logo is not None:
         image_w, image_h = logo.getSize()
@@ -282,7 +282,7 @@ def _draw_ticket(c, x, y, w, h, *, game_name, number, size, cells, fonts, brand,
     if logo_w:
         c.drawImage(logo, x + 4, y + (footer_h - logo_h) / 2, width=logo_w, height=logo_h, mask="auto")
     if lines:
-        c.setFillColor(black)
+        c.setFillColor(ink)
         cursor = y + footer_h / 2 + text_h / 2 - footer_size * 0.95  # baseline of the first line, block centred
         for line in lines:
             start = text_right - sum(pdfmetrics.stringWidth(t, f, footer_size) for t, f in line)
