@@ -99,8 +99,10 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   own footer line, for example to announce next week's game. Header and footer text can use
   `${GAME.NAME}` and `${GAME.DATE}`, e.g. `Iron Horse - ${GAME.NAME}`.
 - **Card branding:** add your logo, an accent colour, and header and footer text from the web
-  interface. They appear on the printed PDF and on the cards players see. On paper the accent colour fills the
-  header band; the grid of squares always prints in solid black so it shows on any printer.
+  interface. They appear on the printed PDF and on the cards players see. On paper the header band has the header
+  text on the left and the card number in a circle on the right; the footer band has the logo bottom left and the
+  footer text right-aligned in black. The accent colour fills both bands, and the grid of squares always prints in
+  solid black so it shows on any printer.
 - **Users and permissions:** administrators add accounts (with a generated one-time password) and choose
   who can create games. Passwords are changed from the Account page.
 - **Move a game between installs:** export a game, with its audio if you like, as one file and import it

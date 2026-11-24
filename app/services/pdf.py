@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass, replace
 from io import BytesIO
 
-from reportlab.lib.colors import HexColor, black, gray
+from reportlab.lib.colors import HexColor, black
 from reportlab.lib.pagesizes import A4, letter
 from reportlab.lib.utils import ImageReader, simpleSplit
 from reportlab.pdfbase import pdfmetrics
@@ -29,7 +29,10 @@ TICKETS_PER_PAGE = LAYOUTS["portrait"]  # the allowed counts (the same in either
 
 PAGE_MARGIN = 28
 TICKET_INSET = 8  # space between a ticket and the cut line around it
-HEADER_HEIGHT = 26
+HEADER_HEIGHT = 30  # small cards (2 or 4 per page)
+HEADER_HEIGHT_BIG = 42  # one card on a landscape page
+LOGO_HEIGHT = 30  # the logo in the footer band, at most this tall (and 35% of the card wide)
+LOGO_HEIGHT_BIG = 50
 LEADING = 1.15
 MIN_FONT = 5.0
 
@@ -105,7 +108,7 @@ def _encodable(text: str, fonts: Fonts) -> str:
 
 
 def footer_lines(text: str, game_name: str, fonts: Fonts, size: float, width: float, max_lines: int = FOOTER_LINES):
-    """The footer as at most `max_lines` centred lines that fit `width`: each a list of (text, font name).
+    """The footer as at most `max_lines` lines that fit `width`: each a list of (text, font name).
 
     Lines the host typed stay separate, long ones wrap at spaces, **bold** and *italic* pick the font, and
     ${GAME.NAME}/${GAME.DATE} are filled in after the styling is read (so a game name can't change the styling).
@@ -223,52 +226,73 @@ def _draw_cell(c, x, y, w, h, title, artist, fonts, title_style=DEFAULT_TITLE, a
 
 
 def _draw_ticket(c, x, y, w, h, *, game_name, number, size, cells, fonts, brand, logo):
-    """Draw one ticket in the box whose lower-left corner is (x, y)."""
+    """Draw one ticket in the box whose lower-left corner is (x, y).
+
+    Top to bottom: a header band (title on the left, the card number in a circle on the right), the grid, and a
+    footer band (logo bottom left, footer text right-aligned). The accent colour fills both bands."""
     accent = HexColor(brand.accent) if brand.accent else None
     ink = HexColor(on_color(brand.accent)) if accent else black
+    big = w > 480  # a ticket with a whole landscape page to itself has room for larger type
     top = y + h
+
+    # ---- header: title, and the number in a circle
+    header_h = HEADER_HEIGHT_BIG if big else HEADER_HEIGHT
     if accent:
         c.setFillColor(accent)
-        c.rect(x, top - HEADER_HEIGHT, w, HEADER_HEIGHT, stroke=0, fill=1)
+        c.rect(x, top - header_h, w, header_h, stroke=0, fill=1)
+    diameter = header_h - 6
+    cx, cy = x + w - 4 - diameter / 2, top - header_h / 2
+    number_text = str(number)
+    number_size = fit_text(number_text, fonts.bold, diameter * 0.55, diameter * 0.72, diameter)[0]
+    c.setStrokeColor(ink)
+    c.setLineWidth(1.5 if big else 1.2)
+    c.circle(cx, cy, diameter / 2, stroke=1, fill=0)
     c.setFillColor(ink)
+    c.setFont(fonts.bold, number_size)
+    c.drawCentredString(cx, cy - number_size * 0.35, number_text)
 
-    left = x + 4
-    if logo is not None:
-        logo_w, logo_h = logo.getSize()
-        height = HEADER_HEIGHT - 6
-        width = min(height * logo_w / logo_h, w * 0.35)
-        height = width * logo_h / logo_w
-        c.drawImage(logo, left, top - HEADER_HEIGHT + (HEADER_HEIGHT - height) / 2, width=width, height=height, mask="auto")
-        left += width + 6
-
-    number_text = f"Card {number}"
-    number_width = pdfmetrics.stringWidth(number_text, fonts.bold, 14)
-    c.setFont(fonts.bold, 12)
+    title_size = 22 if big else 14
+    left = x + 6
     title = printable(expand_variables(brand.header_text, game_name=game_name), fonts) or game_name
-    c.drawString(left, top - HEADER_HEIGHT + 8, shorten(title, fonts.bold, 12, x + w - number_width - 12 - left))
-    c.setFont(fonts.bold, 14)
-    c.drawRightString(x + w - 4, top - HEADER_HEIGHT + 8, number_text)
+    c.setFont(fonts.bold, title_size)
+    c.drawString(left, cy - title_size * 0.35, shorten(title, fonts.bold, title_size, cx - diameter / 2 - 8 - left))
 
-    big = w > 480  # a ticket with a whole landscape page to itself has room for a more readable footer
-    lines = footer_lines(brand.footer_text, game_name, fonts, 12 if big else 8, w - 8)
-    footer_size = 12 if big else (8 if len(lines) <= 2 else 7)  # four lines on a small card need a smaller type
-    if len(lines) > 2 or not lines:
-        lines = footer_lines(brand.footer_text, game_name, fonts, footer_size, w - 8)
+    # ---- footer band: logo bottom left, text right-aligned and black
+    logo_w = logo_h = 0.0
+    if logo is not None:
+        image_w, image_h = logo.getSize()
+        logo_h = LOGO_HEIGHT_BIG if big else LOGO_HEIGHT
+        logo_w = min(logo_h * image_w / image_h, w * 0.35)
+        logo_h = logo_w * image_h / image_w
+    text_right = x + w - 6
+    text_left = x + 6 + (logo_w + 8 if logo_w else 0)
+    footer_size = 12 if big else 8
+    lines = footer_lines(brand.footer_text, game_name, fonts, footer_size, text_right - text_left)
+    if not big and len(lines) > 2:  # four lines on a small card need a smaller type
+        footer_size = 7
+        lines = footer_lines(brand.footer_text, game_name, fonts, footer_size, text_right - text_left)
     leading = footer_size * 1.2
-    footer_height = len(lines) * leading + (10 if big else 6) if lines else 0
-    grid_bottom = y + footer_height
+    pad = 4 if big else 3
+    text_h = len(lines) * leading
+    footer_h = max(text_h, logo_h) + 2 * pad if (lines or logo_w) else 0
+    grid_bottom = y + footer_h
+    if footer_h and accent:
+        c.setFillColor(accent)
+        c.rect(x, y, w, footer_h, stroke=0, fill=1)
+    if logo_w:
+        c.drawImage(logo, x + 4, y + (footer_h - logo_h) / 2, width=logo_w, height=logo_h, mask="auto")
     if lines:
-        c.setFillColor(gray)
-        cursor = y + footer_height - (5 if big else 3) - footer_size * 0.85  # baseline of the first line
+        c.setFillColor(black)
+        cursor = y + footer_h / 2 + text_h / 2 - footer_size * 0.95  # baseline of the first line, block centred
         for line in lines:
-            start = x + w / 2 - sum(pdfmetrics.stringWidth(t, f, footer_size) for t, f in line) / 2
+            start = text_right - sum(pdfmetrics.stringWidth(t, f, footer_size) for t, f in line)
             for piece, font in line:
                 c.setFont(font, footer_size)
                 c.drawString(start, cursor, piece)
                 start += pdfmetrics.stringWidth(piece, font, footer_size)
             cursor -= leading
 
-    grid_top = top - HEADER_HEIGHT
+    grid_top = top - header_h
     cell_w = w / size
     cell_h = (grid_top - grid_bottom) / size
     for row in range(size):

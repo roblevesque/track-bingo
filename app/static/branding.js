@@ -5,6 +5,7 @@ if (form) {
   const $ = (selector) => document.querySelector(selector);
   const preview = $("#preview");
   const header = $("#pv-header");
+  const footer = $("#pv-footer");
   const logo = $("#pv-logo");
   const title = $("#pv-title");
 
@@ -39,6 +40,7 @@ if (form) {
     const accent = $("#use_accent").checked ? $("#accent_color").value : "";
     header.style.background = accent || "transparent";
     header.style.color = accent ? readableOn(accent) : "inherit";
+    footer.style.background = accent || "transparent"; // the footer text stays black, as on the printed card
     logo.hidden = !logoUrl;
     if (logoUrl) logo.src = logoUrl;
   }

@@ -18,7 +18,7 @@
       <code>${GAME.DATE}</code> today's date when the cards are printed, so
       <code>Iron Horse - ${GAME.NAME}</code> prints as &ldquo;Iron Horse - 90s Night&rdquo;. A game can also have its own footer
       on the game page.</p>
-    <div data-footer-editor data-preview="#pv-footer">
+    <div data-footer-editor data-preview="#pv-footer-text">
       <label for="footer_text">Footer text <span class="muted">(printed along the bottom of each card; up to four lines)</span></label>
       <div class="md-toolbar" role="toolbar" aria-label="Formatting">
         <button type="button" class="secondary" data-md="**" title="Bold (Ctrl+B)" aria-label="Bold"><strong>B</strong></button>
@@ -77,14 +77,16 @@
     <h2>Preview</h2>
     <div class="brand-preview" id="preview" data-logo="{{ logo_url or '' }}">
       <div class="brand-preview-header" id="pv-header">
-        <img id="pv-logo" alt="" hidden>
         <strong id="pv-title">Your game name</strong>
-        <span>Card 1</span>
+        <span class="pv-number">1</span>
       </div>
       <div class="brand-preview-grid">
         {% for i in range(9) %}<div><strong class="pv-song">Song {{ i + 1 }}</strong><br><small class="pv-artist">Artist</small></div>{% endfor %}
       </div>
-      <div class="brand-preview-footer" id="pv-footer"></div>
+      <div class="brand-preview-footer" id="pv-footer">
+        <img id="pv-logo" alt="" hidden>
+        <div id="pv-footer-text"></div>
+      </div>
     </div>
     <p class="muted">An approximation. Use the PDF preview to see exactly how it prints.</p>
   </section>
