@@ -135,7 +135,7 @@
     <tbody>
     {% for row in playlist %}
       <tr><td>{{ row.song.title }}</td><td class="hide-sm">{{ row.song.artist }}</td><td>{{ row.cards }}</td>
-        <td>{% if row.played %}played{% elif game.status == 'draft' %}ready{% else %}to come{% endif %}</td></tr>
+        <td>{% if row.played %}played{% elif has_window(row.song) %}ready{% else %}not ready{% endif %}</td></tr>
     {% endfor %}
     </tbody>
   </table></div>

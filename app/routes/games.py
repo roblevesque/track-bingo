@@ -26,6 +26,7 @@ from app.services.patterns import (
 )
 from app.services.shapes_store import resolve_shapes, selected_ids, shapes_for_size
 from app.services.ticket_gen import TicketGenerationError, generate_tickets, variety_warning
+from app.services.search import has_window
 from app.web import flash, render
 
 router = APIRouter(prefix="/games")
@@ -231,6 +232,7 @@ def game_detail(
         other_runs=other_runs,
         max_lines=2 * game.grid_size + 2,
         can_delete=can_delete(user, game.owner_id),
+        has_window=has_window,
     )
 
 
