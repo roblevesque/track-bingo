@@ -156,4 +156,5 @@ def preset_shapes(size: int) -> dict[str, tuple[int, ...]]:
 def matching_shape_ids(round_shapes, available) -> set[int]:
     """Ids of the global shapes (objects with id, name and cells) that a round's saved shapes were copied from."""
     wanted = {(s.name, tuple(s.cells)) for s in round_shapes}
-    return {a.id for a in available if (a.name, tuple(a.cells)) in wanted}
+    # A stored WinShape keeps its cells as text ("0,2,6,8"); its cell_list is the tuple to compare.
+    return {a.id for a in available if (a.name, tuple(getattr(a, "cell_list", a.cells))) in wanted}

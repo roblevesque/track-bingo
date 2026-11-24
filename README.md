@@ -21,7 +21,7 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
 - **Rounds with host-chosen patterns:** for each round the host decides what wins: rows, columns,
   diagonals, how many lines, or full house. The rules can be changed at any time, including mid-game.
 - **Custom win shapes:** draw a shape once on the **Shapes** page (or add the common ones: four corners, X,
-  L, T, frame, plus, diamond) and tick it for any round. A round set to *Custom shape* is won by the first
+  L, T, frame, plus, diamond) and tick it for any round (on the game page, from a dropdown list of shapes). A round set to *Custom shape* is won by the first
   card that completes any ticked shape. Rounds keep their own copy, so deleting a shape never breaks a game.
 - **Editable playlist:** after a game is created, songs can be added, removed (if on no card) or replaced
   (swapped on every card) from the game page, even mid-game. Songs already played can't be changed.

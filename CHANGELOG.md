@@ -6,6 +6,10 @@ Newest first. Earlier history is in `git log` and in PLAN.md.
 ## 2026-11-24
 
 ### Changed
+- **Shape picker is a dropdown.** On the game page a round's custom shapes are chosen from a dropdown of checkboxes
+  instead of a long list. When closed it names the ticked shapes (or how many, past three). It is a plain `<details>`
+  element, so it works without JavaScript; `app.js` keeps the label up to date and closes it on Esc or a click outside
+  (`details[data-multi-select]`, reusable elsewhere).
 - **Printed card layout.** The header text is larger (22pt on a one-per-page card, 14pt on smaller ones). The card
   number drops the word "Card" and sits larger in a circle at the right of the header. The logo moves from the header
   to the bottom left, sized to the footer band (up to 50pt tall, or 30pt on smaller cards). The footer text is
@@ -15,6 +19,9 @@ Newest first. Earlier history is in `git log` and in PLAN.md.
 - Change the meaning of 'ready' for songs on a game edit screen to reflect clipped status. 
 
 ### Fixed
+- **Saved shapes showed unticked on the game page.** Matching a round's shapes to the saved ones compared the stored
+  text of the squares ("0,2,6,8") character by character, so nothing ever matched. Saving such a round from the game
+  page then sent it with no shapes. It now compares the squares properly (`matching_shape_ids`), with a test.
 - **Card borders didn't print.** The grid on printed cards was drawn in the branding accent colour at 0.6pt, which
   a pale accent turns into a near-invisible line on a grayscale or toner-saving printer (it looked fine in the PDF).
   The grid now always prints in black: 1pt between squares and a 1.5pt frame round the whole grid. The accent colour

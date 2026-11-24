@@ -21,11 +21,19 @@
   </fieldset>
   <fieldset>
     <legend class="muted">Custom shapes (used when &ldquo;Wins with&rdquo; is Custom shape; any one of them wins)</legend>
-    {% for s in shapes %}
-    <label class="check"><input type="checkbox" name="shape_ids" value="{{ s.id }}" {% if selected and s.id in selected %}checked{% endif %}> {{ s.name }}</label>
+    {% if shapes %}
+    {% set chosen = shapes|selectattr('id', 'in', selected or [])|map(attribute='name')|list %}
+    <details class="multi-select" data-multi-select data-empty="No shapes chosen" data-many="shapes chosen">
+      <summary data-summary>{% if not chosen %}No shapes chosen{% elif chosen|length <= 3 %}{{ chosen|join(', ') }}{% else %}{{ chosen|length }} shapes chosen{% endif %}</summary>
+      <div class="multi-select-panel">
+        {% for s in shapes %}
+        <label class="check"><input type="checkbox" name="shape_ids" value="{{ s.id }}" data-label="{{ s.name }}" {% if selected and s.id in selected %}checked{% endif %}> {{ s.name }}</label>
+        {% endfor %}
+      </div>
+    </details>
     {% else %}
     <p class="muted">No shapes for {{ game.grid_size }}&times;{{ game.grid_size }} cards yet. <a href="/shapes?size={{ game.grid_size }}">Make some</a>.</p>
-    {% endfor %}
+    {% endif %}
   </fieldset>
 {% endmacro %}
 

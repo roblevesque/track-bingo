@@ -363,3 +363,28 @@ function setupUploadForm() {
 }
 
 setupUploadForm();
+
+// A dropdown of checkboxes: <details data-multi-select data-empty="..." data-many="..."><summary data-summary>…</summary>…</details>.
+// The closed dropdown names what is ticked (up to three, then a count). It closes on a click outside it or on Esc;
+// it is a plain <details>, so without this script it still opens, closes and submits normally.
+(function multiSelects() {
+  const all = () => document.querySelectorAll("details[data-multi-select]");
+  const summarise = (box) => {
+    const names = [...box.querySelectorAll("input[type=checkbox]:checked")].map((i) => i.dataset.label || i.value);
+    box.querySelector("[data-summary]").textContent =
+      !names.length ? box.dataset.empty || "None chosen" : names.length <= 3 ? names.join(", ") : `${names.length} ${box.dataset.many || "chosen"}`;
+  };
+  document.addEventListener("change", (event) => {
+    const box = event.target.closest?.("details[data-multi-select]");
+    if (box) summarise(box);
+  });
+  document.addEventListener("click", (event) => {
+    for (const box of all()) if (box.open && !box.contains(event.target)) box.open = false;
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    for (const box of all()) {
+      if (box.open) { box.open = false; box.querySelector("summary").focus(); }
+    }
+  });
+})();

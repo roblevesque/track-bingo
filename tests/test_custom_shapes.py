@@ -147,3 +147,26 @@ def test_replacing_keeps_the_songs_place_in_the_order():
     assert replace_in_remaining([1, 2, 3, 4], 1, 3, 9) == [1, 2, 9, 4]
     with pytest.raises(ValueError):
         replace_in_remaining([1, 2, 3, 4], 2, 1, 9)  # already played
+
+
+def test_the_game_page_ticks_the_shapes_a_round_uses(app, logged_in, tmp_path):
+    """Stored shapes keep their cells as text, so matching must use cell_list (it once compared characters)."""
+    from sqlmodel import Session, select
+
+    from app.models import Round, WinShape
+    from tests.conftest import create_game, csrf_token, game_id_from, seed_songs
+
+    ids = seed_songs(app, logged_in, tmp_path, 12)
+    game_id = game_id_from(create_game(logged_in, ids))
+    logged_in.post("/shapes/presets", data={"size": "3", "csrf_token": csrf_token(logged_in, "/shapes?size=3")})
+    with Session(app.state.engine) as session:
+        shapes = session.exec(select(WinShape).order_by(WinShape.id)).all()[:2]
+        round_id = session.exec(select(Round.id).where(Round.game_id == game_id)).first()
+    logged_in.post(f"/games/{game_id}/rounds/{round_id}", data={
+        "name": "R", "mode": "shapes", "shape_ids": [str(s.id) for s in shapes],
+        "csrf_token": csrf_token(logged_in, f"/games/{game_id}")})
+    html = logged_in.get(f"/games/{game_id}").text
+    for shape in shapes:
+        assert f'value="{shape.id}" data-label="{shape.name}" checked' in html
+    summary = html.split("<summary data-summary>")[1].split("<")[0]  # the first round's closed dropdown
+    assert all(s.name in summary for s in shapes)
