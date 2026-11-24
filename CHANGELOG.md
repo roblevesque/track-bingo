@@ -9,7 +9,8 @@ Newest first. Earlier history is in `git log` and in PLAN.md.
 - **Shape picker is a dropdown.** On the game page a round's custom shapes are chosen from a dropdown of checkboxes
   instead of a long list. When closed it names the ticked shapes (or how many, past three). It is a plain `<details>`
   element, so it works without JavaScript; `app.js` keeps the label up to date and closes it on Esc or a click outside
-  (`details[data-multi-select]`, reusable elsewhere).
+  (`details[data-multi-select]`, reusable elsewhere). The host console's *Change what counts as a win* form uses the
+  same dropdown.
 - **Printed card layout.** The header text is larger (22pt on a one-per-page card, 14pt on smaller ones). The card
   number drops the word "Card" and sits larger in a circle at the right of the header. The logo moves from the header
   to the bottom left, sized to the footer band (up to 50pt tall, or 30pt on smaller cards). The footer text is

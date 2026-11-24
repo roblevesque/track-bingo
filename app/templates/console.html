@@ -99,7 +99,11 @@
             <fieldset>
               <legend class="muted">Custom shapes (when &ldquo;Wins with&rdquo; is Custom shape; any one wins)
                 &middot; <a href="/shapes" target="_blank" rel="noopener">edit shapes</a></legend>
-              <div id="rule-shapes"></div>
+              <details class="multi-select" id="rule-shapes-box" data-multi-select data-empty="No shapes chosen" data-many="shapes chosen">
+                <summary data-summary>No shapes chosen</summary>
+                <div class="multi-select-panel" id="rule-shapes"></div>
+              </details>
+              <p class="muted" id="rule-shapes-none" hidden>No shapes for this card size yet. Make some on the Shapes page.</p>
             </fieldset>
             <div class="row">
               <button type="submit">Save rules for this round</button>

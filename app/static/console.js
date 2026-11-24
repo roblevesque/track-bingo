@@ -375,13 +375,12 @@ if (root) {
   // own copy of a shape, so a shape is matched to the round by name and squares.
   function renderShapeChoices(round) {
     const box = $("#rule-shapes");
+    const dropdown = $("#rule-shapes-box");
     const key = (s) => `${s.name}|${s.cells.join(",")}`;
     const used = new Set((round.shapes || []).map(key));
     const available = state.shapes || [];
-    if (!available.length) {
-      box.replaceChildren(el("p", "No shapes for this card size yet. Make some on the Shapes page.", "muted"));
-      return;
-    }
+    dropdown.hidden = !available.length;
+    $("#rule-shapes-none").hidden = !!available.length;
     box.replaceChildren(...available.map((shape) => {
       const label = el("label", "", "check");
       const input = document.createElement("input");
@@ -389,9 +388,12 @@ if (root) {
       input.name = "shape_ids";
       input.value = shape.id;
       input.checked = used.has(key(shape));
+      input.dataset.label = shape.name;
       label.append(input, ` ${shape.name}`);
       return label;
     }));
+    // The dropdown's closed label is kept up to date by app.js on "change"; prompt it after a re-render.
+    dropdown.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
   function renderRules() {

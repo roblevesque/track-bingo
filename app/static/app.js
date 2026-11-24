@@ -366,7 +366,8 @@ setupUploadForm();
 
 // A dropdown of checkboxes: <details data-multi-select data-empty="..." data-many="..."><summary data-summary>…</summary>…</details>.
 // The closed dropdown names what is ticked (up to three, then a count). It closes on a click outside it or on Esc;
-// it is a plain <details>, so without this script it still opens, closes and submits normally.
+// it is a plain <details>, so without this script it still opens, closes and submits normally. A page that rebuilds
+// the checkboxes dispatches a bubbling "change" on the <details> to refresh the label (see console.js).
 (function multiSelects() {
   const all = () => document.querySelectorAll("details[data-multi-select]");
   const summarise = (box) => {
