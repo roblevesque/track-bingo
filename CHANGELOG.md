@@ -12,6 +12,7 @@ Newest first. Earlier history is in `git log` and in PLAN.md.
   right-aligned on a band filled with the accent colour (no band without an accent). Its text is black, or white
   when the accent is too dark for black to read, using the same rule as the header. The Branding page
   preview and the game page footer preview follow the new look. Cards keep the same songs, so printed ones stay valid.
+- Change the meaning of 'ready' for songs on a game edit screen to reflect clipped status. 
 
 ### Fixed
 - **Card borders didn't print.** The grid on printed cards was drawn in the branding accent colour at 0.6pt, which
