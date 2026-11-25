@@ -23,3 +23,23 @@ export function fadeVolume(time, start, end, fade) {
   const falling = known ? (end - time) / f : 1;
   return Math.min(1, Math.max(0, Math.min(rising, falling)));
 }
+
+/**
+ * Where playback is inside a clip's window, in seconds: { elapsed, length }. `length` is NaN while the file's
+ * duration isn't known yet and the clip has no saved end. `elapsed` is kept inside 0..length.
+ */
+export function clipProgress(currentTime, startMs, endMs, duration) {
+  const start = (startMs || 0) / 1000;
+  const end = endMs ? endMs / 1000 : duration;
+  const length = Number.isFinite(end) ? Math.max(0, end - start) : NaN;
+  let elapsed = Math.max(0, (currentTime || 0) - start);
+  if (Number.isFinite(length)) elapsed = Math.min(elapsed, length);
+  return { elapsed, length };
+}
+
+/** 75.4 -> "1:15". Not a number -> "--:--". */
+export function formatClock(seconds) {
+  if (!Number.isFinite(seconds)) return "--:--";
+  const whole = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+}

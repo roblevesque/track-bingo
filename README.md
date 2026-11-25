@@ -36,9 +36,11 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
 - **Host console:** start, next song, replay, pause, skip, reshuffle the songs not yet played, move
   to the next round, end the game. It lists every song still to come, in play order, beside the ones
   already played, and shows a banner the moment a team calls a valid bingo. On a wide screen the
-  controls and claims sit on the left and the playlist and teams on the right. Optional automatic next
-  song and fade in/out.
-- **Phone remote:** run the game from your phone: next song, pause, replay, sound effects, and a bingo alert.
+  controls and claims sit on the left and the playlist and teams on the right. Above the buttons, the song
+  that is playing has a progress bar with the time into the clip and its length (e.g. 0:12 / 0:30). Optional
+  automatic next song and fade in/out.
+- **Phone remote:** run the game from your phone: next song, pause, replay, sound effects, a bingo alert, the
+  clip's progress bar, a folded list of the songs played so far, and checking a paper card.
   The console shows a QR code: scan it and the pairing code is filled in, so you only tap Connect.
 - **Suggested clip sections:** on a song's edit page, **Suggest sections** listens to the song in your browser
   (nothing is uploaded, no ffmpeg) and offers up to three clip-length sections that are loud and repeat elsewhere
@@ -95,7 +97,8 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   console, for the moments around checking a claim.
 - **Background music:** play your whole library, shuffled and quiet, before and after the game.
 - **Printed cards:** download every card as one numbered PDF (one landscape card per page by
-  default), hand them out, and check a paper card by number from the console. Each game can have its
+  default), hand them out, and check a paper card by number from the console or the phone remote. The check
+  shows the card on screen with every played square crossed out in green, so you can hold the paper next to it. Each game can have its
   own footer line, for example to announce next week's game. Header and footer text can use
   `${GAME.NAME}` and `${GAME.DATE}`, e.g. `Iron Horse - ${GAME.NAME}`.
 - **Card branding:** add your logo, an accent colour, and header and footer text from the web
@@ -201,7 +204,9 @@ whatever the app is called.
 10. **Rounds:** after a win, press **Next round**, or change what counts as a win ("Change what
    counts as a win"). The same team can win several rounds.
 11. **Paper cards:** type the card number into **Check a printed card** to see whether it wins the
-   current round, and what it is still missing.
+   current round, and what it is still missing. The card appears below with played squares crossed out in
+   green, the winning line filled green, or (when it doesn't win yet) the squares it still needs outlined
+   with a dashed border. It stays on screen and updates as songs play, until you check another card.
 12. **Afterwards:** **End game**, then **Run this game again** from the game page.
 
 ### Phone remote
@@ -209,7 +214,9 @@ whatever the app is called.
 Open **Phone remote** on the console and press **Turn on the remote**. It shows a six-character code and
 an address. On your phone, open that address (it ends in `/remote`), type the code, and you get a page
 with a big **Next song** button, **Pause / Resume**, **Replay**, **Skip next**, **Start game**, **Next round**,
-the sound effects, the current and next song, and a banner when a team calls a valid bingo.
+the sound effects, the current and next song with a progress bar for the clip, and a banner when a team
+calls a valid bingo. Two folded sections sit below the buttons: **Check a card** (the same check as the
+console, with a smaller card: titles only) and **Played so far** (the songs already heard, newest first).
 
 How it works: the songs play on the host computer, so the phone can't play anything itself. It sends
 each button press to the server, which passes it to the console window, and the console acts exactly as
@@ -221,7 +228,9 @@ if you had clicked. That means:
   phone, click anywhere in the console window once.
 - A tap that arrives late can't skip a song: **Next song** carries the song count the phone saw, and the
   server ignores it if the game has already moved on. Double taps on one button send once.
-- The phone only gets what it needs: no playlist, team names or codes. Ending the game, rules and
+- The progress bar comes from the console: it tells the server when a clip starts, pauses or jumps, and the
+  phone counts on from there, so it can be a moment out.
+- The phone only gets what it needs: no songs still to come beyond the next one, no team names or codes. Ending the game, rules and
   settings stay on the console.
 
 Security: the code lets a phone drive *that one game's* console, nothing else; there is no access to your
@@ -472,12 +481,13 @@ app/
     patterns.py      what counts as a win
     shapes_store.py  looking up custom win shapes
     checker.py       claim verification
+    card_check.py    checking a printed card, square by square, for the console and the phone
     ticket_gen.py    card generation
     playlist.py      play order
     series.py        runs of the same game
     permissions.py   account rules
     effects.py       the list of sound effects offered in the console
-    remote.py        pairing codes, command checking, the phone's view of the game
+    remote.py        pairing codes, command checking, the phone's view of the game, clip position reports
     qr.py            QR code encoder (SVG) for the phone remote
     gameio.py        the game export file format
     events.py        live-update hub (Server-Sent Events)
@@ -498,7 +508,7 @@ app/
     plans.py         saved plans as a live checklist
   templates/         Jinja pages
   static/            styles.css, plain ES modules (app, play, console, live, playback, branding, remote,
-                     suggest, clip_time, footer_md, play_order), effects/ (the built-in WAV sounds)
+                     suggest, clip_time, footer_md, play_order, card_view), effects/ (the built-in WAV sounds)
 scripts/              generate_effects.py (made the first synthesised sounds; kept for reference)
 tests/
 Dockerfile, compose.yaml, .dockerignore

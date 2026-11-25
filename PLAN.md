@@ -244,3 +244,12 @@ Low-tier additions: `Song.fun_fact`; `app/services/qr.py` (dependency-free QR en
 - [X] Step 1: check a pasted or uploaded sheet against the library, with tags, usage counts, close matches, artist-only rows, tag-the-matches and a songs-to-get list/CSV (`/planner`, `app/services/planner.py`, `app/services/sheets.py`)
 - [X] Step 2: saved plans that update as songs are uploaded, with "create game from this plan" (`Plan` model, `app/services/plans.py`, `app/routes/plans.py`, `plan.html`/`plans.html`; `plan_id` on `/library/upload`)
 - [X] Step 3: warn about likely duplicates when uploading songs, plus a Find duplicates page (`app/services/duplicates.py`, `/library/duplicates`)
+
+### Notes from the first real game (2026-11-25)
+- [X] Checking a printed card shows the card with played squares crossed out, on the console and the phone remote (`app/services/card_check.py`, `card_view.js`, `/remote/{id}/check`)
+- [X] Clip progress bar and time on the console and the phone remote (`/games/{id}/run/playback` relays the console's position; `Hub.playback`)
+- [X] Played songs on the phone remote, folded by default
+- [ ] Even out clip volumes: measure each clip window's loudness in the browser, store a gain per song, apply it in the console
+- [ ] End the game automatically after the last clip
+- [ ] Resume reportedly disappeared after a last-round win: not reproduced in the code, waiting on details from the host
+- [ ] Volume control on the phone remote (only if evening out the volumes isn't enough)

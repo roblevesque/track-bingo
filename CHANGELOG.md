@@ -3,6 +3,26 @@
 The longer story behind each change. Commit messages stay short; the detail lives here.
 Newest first. Earlier history is in `git log` and in PLAN.md.
 
+## 2026-11-25
+
+Changes from the notes taken at the first real game night.
+
+### Added
+- **Checking a card shows the card.** *Check a printed card* on the console now draws the card under the verdict:
+  played squares are crossed out with a thin green X, a winning line or shape is filled green (every square for a
+  full house), and when the card doesn't win yet the squares on its closest route to a win get a dashed outline. The
+  card stays on screen and is checked again as each song plays, until another card is checked. The check moved into
+  `app/services/card_check.py` so the console and the phone share it; the response gained `size` and `squares`.
+- **Check a card from the phone.** The phone remote has a folded *Check a card* section with a smaller version
+  of the same card (titles only). It is read-only, so it works even while the console is closed
+  (`POST /remote/{id}/check`, paired phones only).
+- **Clip progress.** The console shows the current song above the buttons with a progress bar and the time into
+  the clip window against its length. The phone remote shows the same bar under the song title. The console posts
+  its position to `POST /games/{id}/run/playback` whenever the clip starts, pauses or jumps; the server passes it to
+  the phones and keeps the latest one, so a phone that connects mid-clip catches up. Phones count on between reports.
+- **Played songs on the phone.** A folded *Played so far* list on the remote, newest first. The phone's view
+  gained `played` and the current song's `id`; it still gets nothing about songs after the next one.
+
 ## 2026-11-24
 
 ### Changed

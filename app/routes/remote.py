@@ -6,6 +6,7 @@ live connection and acts as if the host had clicked.
 """
 
 import secrets
+import time
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
@@ -14,9 +15,10 @@ from sqlmodel import Session, select
 from app.db import get_session
 from app.models import Game
 from app.security import check_csrf
+from app.services.card_check import CardCheckError, check_card
 from app.services.effects import available_effects
 from app.services.events import HOST, REMOTE, Event, stream
-from app.services.remote import normalize_code, validate_command
+from app.services.remote import normalize_code, playback_now, validate_command
 from app.services.snapshots import console_online, remote_state
 from app.web import render
 
@@ -104,6 +106,8 @@ async def events(request: Request, game_id: int, session: Session = Depends(get_
     subscription = hub.subscribe(game.id, REMOTE)
     hub.publish(game.id, HOST, Event("remote", {"connected": hub.subscriber_count(game.id, REMOTE)}))
     initial = [Event("state", remote_state(session, game, hub))]
+    if game.id in hub.playback:  # a clip may be part way through: show its progress straight away
+        initial.append(Event("playback", playback_now(*hub.playback[game.id], time.monotonic())))
 
     async def body():
         try:
@@ -140,3 +144,17 @@ async def command(
         raise HTTPException(status_code=400, detail=str(exc)) from None
     hub.publish(game.id, HOST, Event("command", {"id": secrets.token_hex(6), **clean}))
     return {"ok": True}
+
+
+@router.post("/{game_id}/check")
+def check(request: Request, game_id: int, ticket_number: str = Form(""), csrf_token: str = Form(""),
+          session: Session = Depends(get_session)):
+    """Check a printed card from the phone. Read-only, so it works even while the console is closed."""
+    check_csrf(request, csrf_token)
+    game = _require_paired(request, session, game_id)
+    if not ticket_number.strip().isdigit() or not 0 < int(ticket_number) <= 100_000:
+        raise HTTPException(status_code=400, detail="Type the number printed on the card.")
+    try:
+        return check_card(session, game, int(ticket_number))
+    except CardCheckError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc)) from None

@@ -49,6 +49,9 @@ class Hub:
     def __init__(self) -> None:
         self._subscriptions: dict[int, set[Subscription]] = {}
         self._lock = threading.Lock()
+        # The console's latest clip position per game, with the monotonic time it arrived, so a phone that
+        # connects mid-clip can show progress straight away.
+        self.playback: dict[int, tuple[dict, float]] = {}
 
     def subscribe(self, game_id: int, audience: str) -> Subscription:
         """Call from inside the event loop that will read the queue."""

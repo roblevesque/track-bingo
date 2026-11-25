@@ -82,7 +82,7 @@ def host_snapshot():
         "round": {"id": 1, "number": 1, "name": "Round 1", "text": "1 line (rows)"},
         "rounds": [{"number": 1}, {"number": 2}], "songs_played": 3, "total_songs": 40,
         "current_song": song(3), "next_song": song(4),
-        "played": [song(3)], "upcoming": [song(4), song(5)], "teams": [{"id": 1, "name": "Quiz Kings", "ticket": 3}],
+        "played": [{"n": 3, **song(3)}], "upcoming": [song(4), song(5)], "teams": [{"id": 1, "name": "Quiz Kings", "ticket": 3}],
         "claims": [{"id": 2, "team": "B", "ticket": 9, "status": "win", "songs_played": 3, "detail": "row 2"},
                    {"id": 1, "team": "A", "ticket": 3, "status": "win", "songs_played": 3, "detail": "row 1"},
                    {"id": 3, "team": "C", "ticket": 5, "status": "rejected", "songs_played": 2, "detail": "2 short"}],
@@ -93,7 +93,8 @@ def host_snapshot():
 def test_the_phone_view_has_what_a_remote_needs_and_nothing_more():
     view = remote_view(host_snapshot(), console_online=True)
     assert view["name"] == "Pub Night" and view["status"] == "active" and view["console_online"] is True
-    assert view["current"] == {"title": "Song 3", "artist": "A", "fun_fact": ""} and view["next"]["id"] == 4
+    assert view["current"] == {"id": 3, "title": "Song 3", "artist": "A", "fun_fact": ""} and view["next"]["id"] == 4
+    assert view["played"] == [{"n": 3, "title": "Song 3", "artist": "A"}]  # already heard, so not a spoiler
     assert view["round"] == {"number": 1, "name": "Round 1", "text": "1 line (rows)"} and view["has_next_round"] is True
     assert [w["team"] for w in view["wins"]] == ["A", "B"]  # valid claims only, oldest first (the tie reads in order)
     assert view["effects"] == [{"id": "win", "label": "Win", "loop": False}]  # no file URLs: the console plays them

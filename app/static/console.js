@@ -1,6 +1,7 @@
 // Host console: drives the game and plays each song's clip window in this browser.
 import { connectLive, statusText } from "./live.js";
-import { clampNumber, fadeVolume } from "./playback.js";
+import { clampNumber, clipProgress, fadeVolume, formatClock } from "./playback.js";
+import { renderCardCheck } from "./card_view.js";
 
 const root = document.querySelector("#console");
 
@@ -41,6 +42,7 @@ if (root) {
   let bgErrors = 0; // tracks in a row that failed to play
   let effectsSignature = ""; // so the effect buttons are only rebuilt when the list changes
   let knownClaims = new Set(state.claims.map((c) => c.id));
+  let checkedCard = null; // the printed card on screen: { number, at (the game moment it was checked at) }
 
   // Playback settings are remembered in this browser (they belong to the host's setup, not the game).
   const SETTINGS_KEY = "musicbingo.console";
@@ -112,6 +114,45 @@ if (root) {
       audio.load();
     }
   }
+
+  // ---- clip progress: a bar and the time inside the clip window, here and (via the server) on the phone remote
+  function showProgress() {
+    const strip = $("#now-strip");
+    const song = state.game.status === "active" ? state.current_song : null;
+    strip.hidden = !song;
+    if (!song) return;
+    const here = playing && playing.id === song.id && audio.src.endsWith(song.audio_url);
+    const { elapsed, length } = here ? clipProgress(audio.currentTime, song.start_ms, song.end_ms, audio.duration)
+      : { elapsed: 0, length: NaN };
+    const share = length > 0 ? Math.min(1, elapsed / length) : 0;
+    $("#now-label").textContent = !here ? "Current song (not playing)" : audio.paused ? "Paused" : "Now playing";
+    $("#now-song").textContent = songLine(song);
+    $("#clip-fill").style.width = `${(share * 100).toFixed(1)}%`;
+    $("#clip-time").textContent = `${formatClock(elapsed)} / ${formatClock(length)}`;
+    const bar = $("#clip-bar");
+    bar.setAttribute("aria-valuemax", String(Math.round(length) || 0));
+    bar.setAttribute("aria-valuenow", String(Math.round(elapsed)));
+    bar.setAttribute("aria-valuetext", `${formatClock(elapsed)} of ${formatClock(length)}`);
+  }
+  // Tell the server where the clip is whenever it starts, stops or jumps; phones fill in the time in between.
+  let reportTimer = null;
+  function reportPlayback() {
+    clearTimeout(reportTimer);
+    reportTimer = setTimeout(() => {
+      if (!playing || state.game.status !== "active") return;
+      const { elapsed, length } = clipProgress(audio.currentTime, playing.start_ms, playing.end_ms, audio.duration);
+      const body = new FormData();
+      body.set("csrf_token", csrf);
+      body.set("song_id", playing.id);
+      body.set("elapsed", elapsed.toFixed(2));
+      body.set("length", Number.isFinite(length) ? length.toFixed(2) : "");
+      body.set("paused", audio.paused ? "1" : "");
+      // Only the phone's progress bar depends on this, so a failure is not worth an error message here.
+      fetch(`/games/${gameId}/run/playback`, { method: "POST", body }).catch(() => {});
+    }, 150); // play/pause/seek events arrive in bursts: send the settled position once
+  }
+  ["playing", "pause", "seeked", "durationchange"].forEach((name) => audio.addEventListener(name, () => { showProgress(); reportPlayback(); }));
+  setInterval(() => { if (playing && !audio.paused) showProgress(); }, 250);
 
   // Every 50 ms: apply the fade curve, and stop at the end of the saved window.
   setInterval(() => {
@@ -498,6 +539,8 @@ if (root) {
       : "";
 
     renderRules();
+    recheckCard();
+    showProgress();
     renderEffects();
     renderBackground();
     renderRemote();
@@ -556,19 +599,23 @@ if (root) {
   // ---- check a printed card
   $("#check-form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    const box = $("#check-result");
-    const d = await post("check", { ticket_number: event.target.elements.ticket_number.value });
-    if (!d) { box.hidden = true; return; }
-    if (d.status === "win") {
-      box.textContent = `Card ${d.ticket} WINS ${d.round}: ${d.lines.join(", ") || "full house"}.`;
-      box.className = "flash success";
-    } else {
-      const need = d.missing.length ? ` Still needs: ${d.missing.join("; ")}.` : "";
-      box.textContent = `Card ${d.ticket} does not win ${d.round} yet (${d.squares_needed} short).${need}`;
-      box.className = "flash error";
-    }
-    box.hidden = false;
+    checkedCard = { number: event.target.elements.ticket_number.value, at: "" };
+    recheckCard();
   });
+  // The card stays on screen and is checked again as songs play, until another card is checked.
+  async function recheckCard() {
+    if (!checkedCard) return;
+    const at = `${state.songs_played}/${state.game.status}/${state.round && state.round.number}`;
+    if (checkedCard.at === at) return;
+    const card = checkedCard;
+    card.at = at;
+    const box = $("#check-result");
+    const d = await post("check", { ticket_number: card.number }, { quiet: box.hidden === false && card.shown });
+    if (card !== checkedCard) return; // another card was checked meanwhile
+    if (!d) { box.hidden = true; checkedCard = null; return; }
+    card.shown = true;
+    renderCardCheck(box, d);
+  }
 
   // ---- live updates
   connectLive(`/games/${gameId}/run/events`, {

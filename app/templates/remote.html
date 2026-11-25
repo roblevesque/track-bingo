@@ -10,6 +10,10 @@
   <section class="card">
     <p class="muted" id="r-round"></p>
     <p><strong id="r-now">Nothing yet</strong> <span id="r-now-artist" class="muted"></span></p>
+    <div class="clip-progress" id="r-clip" hidden>
+      <div class="clip-bar" id="r-clip-bar" role="progressbar" aria-label="Clip progress" aria-valuemin="0"><div class="clip-fill" id="r-clip-fill"></div></div>
+      <span class="clip-time" id="r-clip-time"></span>
+    </div>
     <p class="fun-fact" id="r-fact" hidden></p>
     <p class="muted">Up next: <span id="r-next-song">&mdash;</span></p>
     <p class="fun-fact" id="r-next-fact" hidden></p>
@@ -24,6 +28,20 @@
     <button id="r-skip" type="button" class="remote-btn secondary">Skip next</button>
     <button id="r-next-round" type="button" class="remote-btn secondary" hidden>Next round</button>
   </div>
+
+  <details class="card remote-fold" id="r-check-box">
+    <summary><strong>Check a card</strong></summary>
+    <form id="r-check" class="row">
+      <label>Card number <input name="ticket_number" type="number" inputmode="numeric" min="1" required></label>
+      <button type="submit">Check</button>
+    </form>
+    <div id="r-check-result" class="check-result" aria-live="polite" hidden></div>
+  </details>
+
+  <details class="card remote-fold" id="r-played-box">
+    <summary><strong>Played so far</strong> <span class="muted" id="r-played-count"></span></summary>
+    <ol id="r-played" class="plain playlist"></ol>
+  </details>
 
   <h2>Sound effects</h2>
   <div id="r-effects" class="remote-grid"></div>

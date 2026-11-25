@@ -16,6 +16,13 @@
         <p>Join code <strong class="code" id="join-code"></strong></p>
         <p class="muted">Players open <span id="join-url"></span> or enter the code on the home page.
           <span id="teams-count"></span></p>
+        <div id="now-strip" class="now-strip" hidden>
+          <p class="now-title"><span class="muted" id="now-label">Now playing</span> <strong id="now-song"></strong></p>
+          <div class="clip-progress">
+            <div class="clip-bar" id="clip-bar" role="progressbar" aria-label="Clip progress" aria-valuemin="0"><div class="clip-fill" id="clip-fill"></div></div>
+            <span class="clip-time" id="clip-time"></span>
+          </div>
+        </div>
         <div class="row">
           <button id="btn-start" type="button">Start game</button>
           <button id="btn-next" type="button">Next song</button>
@@ -132,7 +139,7 @@
           <label>Card number <input name="ticket_number" type="number" min="1" required></label>
           <button type="submit">Check</button>
         </form>
-        <p id="check-result" class="flash" hidden></p>
+        <div id="check-result" class="check-result" aria-live="polite" hidden></div>
       </section>
 
       <section class="card" id="remote-card">

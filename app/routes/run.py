@@ -4,26 +4,28 @@ Like play.py, mutating handlers are `async def` with no `await` in their critica
 section, so they execute one at a time on the event loop.
 """
 
+import time
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 from sqlmodel import Session, select
 
 from app.db import get_session
 from app.deps import require_user
-from app.models import Game, GameSong, Round, Song, Ticket, User
+from app.models import Game, GameSong, Round, Song, User
 from app.routes.games import owned_game, parse_rules
 from app.routes.play import join_url
 from app.security import check_csrf
-from app.services.checker import verify_claim
+from app.services.card_check import CardCheckError, check_card
 from app.services.events import HOST, REMOTE, Event, stream
-from app.services.patterns import MODE_LINES, describe_line, shapes_to_json
+from app.services.patterns import MODE_LINES, shapes_to_json
 from app.services.shapes_store import resolve_shapes
 from app.services.playlist import (
-    PlaylistExhausted, advance, new_play_order, planned_order, played_ids, reshuffle_remaining, skip_next,
+    PlaylistExhausted, advance, new_play_order, planned_order, reshuffle_remaining, skip_next,
 )
 from app.services.qr import to_svg
-from app.services.remote import new_code
-from app.services.snapshots import audio_url, broadcast, host_state, remote_info, round_name
+from app.services.remote import new_code, parse_playback
+from app.services.snapshots import audio_url, broadcast, host_state, remote_info
 from app.web import render
 
 router = APIRouter(prefix="/games/{game_id}/run")
@@ -162,6 +164,23 @@ async def skip(request: Request, game_id: int, csrf_token: str = Form(""), expec
     return _commit_and_broadcast(request, session, game)
 
 
+@router.post("/playback")
+async def playback(request: Request, game_id: int, song_id: int = Form(...), elapsed: str = Form("0"),
+                   length: str = Form(""), paused: str = Form(""), csrf_token: str = Form(""),
+                   user: User = Depends(require_user), session: Session = Depends(get_session)):
+    """Where the console's clip is (sent when it starts, pauses or jumps), passed on to the phone remotes."""
+    check_csrf(request, csrf_token)
+    game = owned_game(session, user, game_id)
+    try:
+        report = parse_playback(song_id, elapsed, length, paused)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    hub = request.app.state.hub
+    hub.playback[game.id] = (report, time.monotonic())
+    hub.publish(game.id, REMOTE, Event("playback", report))
+    return {"ok": True}
+
+
 @router.post("/reshuffle")
 async def reshuffle(request: Request, game_id: int, csrf_token: str = Form(""),
                     user: User = Depends(require_user), session: Session = Depends(get_session)):
@@ -266,26 +285,10 @@ async def add_round(request: Request, game_id: int, name: str = Form(""), mode: 
 @router.post("/check")
 async def check_ticket(request: Request, game_id: int, ticket_number: int = Form(...), csrf_token: str = Form(""),
                        user: User = Depends(require_user), session: Session = Depends(get_session)):
-    """For printed tickets: would this ticket win the current round, right now?"""
+    """For printed tickets: would this ticket win the current round, right now? Includes the card's squares."""
     check_csrf(request, csrf_token)
     game = owned_game(session, user, game_id)
-    _require_active(game)
-    ticket = session.exec(select(Ticket).where(Ticket.game_id == game.id, Ticket.number == ticket_number)).first()
-    if ticket is None:
-        raise HTTPException(status_code=404, detail=f"There is no card number {ticket_number} in this game.")
-    current = session.exec(select(Round).where(Round.game_id == game.id, Round.number == game.current_round)).first()
-    if current is None:
-        raise _conflict("There is no round in progress.")
     try:
-        result = verify_claim(ticket.cells, played_ids(game.play_order, game.current_index), game.grid_size, current.rules())
-    except ValueError as exc:
-        raise _conflict(str(exc)) from None
-    titles = {s.id: s.title for s in session.exec(select(Song).where(Song.id.in_(result.missing_song_ids))).all()} if result.missing_song_ids else {}
-    return {
-        "ticket": ticket.number,
-        "round": round_name(current),
-        "status": result.status,
-        "lines": [describe_line(line) for line in result.completed],
-        "squares_needed": result.squares_needed,
-        "missing": [titles.get(sid, "?") for sid in result.missing_song_ids],
-    }
+        return check_card(session, game, ticket_number)
+    except CardCheckError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc)) from None
