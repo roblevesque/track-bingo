@@ -20,8 +20,26 @@ Changes from the notes taken at the first real game night.
   the clip window against its length. The phone remote shows the same bar under the song title. The console posts
   its position to `POST /games/{id}/run/playback` whenever the clip starts, pauses or jumps; the server passes it to
   the phones and keeps the latest one, so a phone that connects mid-clip catches up. Phones count on between reports.
+- **Even out song volumes.** The game page has a *Volume levels* section: **Measure** has the browser download
+  each of the game's songs, measure its clip window's loudness (`app/static/loudness.js`: ITU-R BS.1770 / EBU R128
+  integrated loudness with K-weighting and gating; at 48 kHz its filters are exactly the standard's coefficients)
+  and save it (`POST /library/{id}/loudness`). The console's new *Even out song volumes* setting (on by default)
+  plays each measured clip at about -16 LUFS (at most 10 dB up or 20 dB down), through a Web Audio gain and a
+  limiter; the fade in/out now goes through the same gain when Web Audio is running. A song's edit page shows its
+  measurement, can measure that one clip, and has a *Volume adjustment* in dB (up to 12 either way). New `song`
+  columns `loudness_db`, `loudness_for` (the clip window measured, so moving the start or end makes it out of
+  date) and `volume_adjust_db`; the console snapshot gained each song's `gain_db` and an `unmeasured` count.
+  Checked against ffmpeg's EBU R128 meter on test tones: the same to 0.1 LU.
+- **The game ends itself after the last song.** When the last clip finishes, the console waits the usual
+  *Wait (seconds) after each clip* and then ends the game (and starts background music if that's ticked), whether
+  or not automatic next song is on. A valid bingo on the last song, or **Cancel**, keeps the game open.
 - **Played songs on the phone.** A folded *Played so far* list on the remote, newest first. The phone's view
   gained `played` and the current song's `id`; it still gets nothing about songs after the next one.
+
+### Fixed
+- **Cancelling the automatic next song.** The countdown said "Press Pause to stop auto-play", but once a clip had
+  ended the button read Resume and pressing it replayed past the clip's end, which started the countdown again.
+  The countdown now has its own **Cancel** button.
 
 ## 2026-11-24
 

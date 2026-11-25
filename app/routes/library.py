@@ -26,6 +26,7 @@ from app.services.clips import (
 from app.services.duplicates import SAME_FILE, Entry, describe, duplicate_groups, find_duplicate
 from app.services.merge import Info, blocking_games, choose_keeper, merged_values, remap_choices, remap_ids
 from app.services.gameio import sha256_file
+from app.services.loudness import describe as describe_volume, parse_adjust, parse_loudness, playback_gain_db, window_key
 from app.services.paging import PER_PAGE_OPTIONS, clean_page, clean_per_page, page_links, paginate
 from app.services.search import SHOWS, SORTS, filter_show, has_window, matches, parse_query, sort_songs
 from app.services.parsing import MAX_FUN_FACT, clean_fun_fact, format_time_ms, normalize_tags, parse_time_ms
@@ -216,7 +217,26 @@ def _form_values(song: Song) -> dict[str, str]:
         "start": format_time_ms(song.start_ms) if song.start_ms else "",
         "end": format_time_ms(song.end_ms),
         "auto_fill": song.auto_fill,
+        "volume_adjust": f"{song.volume_adjust_db:g}" if song.volume_adjust_db else "",
     }
+
+
+@router.post("/{song_id}/loudness")
+def save_loudness(request: Request, song_id: int, loudness: str = Form(""), start_ms: str = Form(""), end_ms: str = Form(""),
+                  csrf_token: str = Form(""), user: User = Depends(require_user), session: Session = Depends(get_session)):
+    """Store a loudness measurement made in the browser, for the clip window it was made over."""
+    check_csrf(request, csrf_token)
+    song = owned_song(session, user, song_id)
+    try:
+        value = parse_loudness(loudness)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    if f"{start_ms}:{end_ms}" != window_key(song.start_ms, song.end_ms):
+        raise HTTPException(status_code=409, detail="The clip times changed while it was being measured. Measure it again.")
+    song.loudness_db, song.loudness_for = value, window_key(song.start_ms, song.end_ms)
+    session.add(song)
+    session.commit()
+    return {"loudness_db": value, "gain_db": playback_gain_db(song), "text": describe_volume(song)}
 
 
 @router.get("/{song_id}/edit")
@@ -230,7 +250,7 @@ def edit_form(
 ):
     song = owned_song(session, user, song_id)
     return render(request, "edit_song.html", user=user, song=song, form=_form_values(song), errors=[],
-                  clip_seconds=get_clip_seconds(session), q=q.strip()[:100], page=clean_page(page),
+                  clip_seconds=get_clip_seconds(session), q=q.strip()[:100], page=clean_page(page), volume_text=describe_volume(song),
                   back_url=_library_url(q, song.id, page))
 
 
@@ -246,6 +266,7 @@ async def edit_submit(
     write_tags_to_file: bool = Form(False),
     auto_fill: bool = Form(False),
     fun_fact: str = Form(""),
+    volume_adjust: str = Form(""),
     q: str = Form(""),
     page: str = Form(""),
     csrf_token: str = Form(""),
@@ -263,6 +284,12 @@ async def edit_submit(
         errors.append("Title is required.")
     if len(title) > MAX_TEXT or len(artist) > MAX_TEXT:
         errors.append(f"Title and artist must be at most {MAX_TEXT} characters.")
+
+    adjust_db = 0.0
+    try:
+        adjust_db = parse_adjust(volume_adjust)
+    except ValueError as exc:
+        errors.append(str(exc))
 
     start_ms: int | None = 0
     end_ms: int | None = None
@@ -284,10 +311,11 @@ async def edit_submit(
                 errors.append("End is beyond the end of the track.")
 
     if errors:
-        form = {"title": title, "artist": artist, "tags": tags, "start": start, "end": end, "auto_fill": auto_fill, "fun_fact": fun_fact}
+        form = {"title": title, "artist": artist, "tags": tags, "start": start, "end": end, "auto_fill": auto_fill,
+                "fun_fact": fun_fact, "volume_adjust": volume_adjust}
         return render(
             request, "edit_song.html", status_code=400, user=user, song=song, form=form, errors=errors,
-            clip_seconds=get_clip_seconds(session), q=q.strip()[:100], page=clean_page(page),
+            clip_seconds=get_clip_seconds(session), q=q.strip()[:100], page=clean_page(page), volume_text=describe_volume(song),
             back_url=_library_url(q, song.id, page),
         )
 
@@ -304,6 +332,7 @@ async def edit_submit(
     song.start_ms, song.end_ms = start_ms, end_ms
     song.auto_fill = auto_fill
     song.fun_fact = fun_fact
+    song.volume_adjust_db = adjust_db
     song.updated_at = utcnow()
     session.add(song)
     session.commit()

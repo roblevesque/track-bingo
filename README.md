@@ -95,6 +95,9 @@ Inspired by [asrashley/music-bingo](https://github.com/asrashley/music-bingo). S
   with that exact tag (`!"classic rock"` for a tag with a space) and `no:tags` finds songs with no tags.
 - **Sound effects:** one-click (or number-key) *Thinking*, *Win*, *Lose* and *Suspense* sounds from the host
   console, for the moments around checking a claim.
+- **Even volumes:** the console plays every song's clip at about the same loudness, so quiet recordings aren't
+  lost and loud ones don't need the mixer. Each clip is measured once in your browser (the files aren't changed),
+  and any song can be nudged louder or quieter by hand. See *Evening out volumes* below.
 - **Background music:** play your whole library, shuffled and quiet, before and after the game.
 - **Printed cards:** download every card as one numbered PDF (one landscape card per page by
   default), hand them out, and check a paper card by number from the console or the phone remote. The check
@@ -276,9 +279,31 @@ console (remembered in that browser) to start silently and press **Next song** y
 ### Automatic next song and fades
 
 In the console, tick **Play the next song automatically** and set how many seconds to wait after each
-clip. Pressing Pause or Replay cancels the countdown, and a valid bingo holds auto-play until you
-press **Next song**. **Fade in and out** ramps the volume over the clip's start and end points
+clip. The countdown has a **Cancel** button, and pressing Pause or Replay cancels it too; a valid bingo holds
+auto-play until you press **Next song**. After the last song the console ends the game by itself, once the same
+number of seconds have passed (whether or not automatic next song is on), unless you press **Cancel** or a team
+has just called a valid bingo; then the game stays open until you press **End game**. **Fade in and out** ramps the volume over the clip's start and end points
 (0 turns it off). These settings are remembered in that browser.
+
+### Evening out volumes
+
+Songs are mastered at very different levels, so without help some clips are hard to hear and others need turning
+down at the mixer. The console can even them out:
+
+1. On the game page, **Volume levels** says how many of the game's songs have been measured. Press **Measure**:
+   your browser downloads each song, measures how loud its clip window is (in LUFS, the broadcast standard that
+   streaming services use) and saves the number. It takes a second or two per song; keep the page open. Nothing
+   in the audio files changes.
+2. In the console, **Even out song volumes** (on by default) plays each measured clip at about -16 LUFS: most
+   songs are turned down a little and quiet ones up (by at most 10 dB). A limiter stops a raised clip from
+   distorting. Set the speaker volume once at the mixer for the evened-out level. The line under the settings says
+   how much the current clip is changed, and how many of the game's songs still need measuring.
+3. If a song still sounds wrong, open it in the library and set **Volume adjustment** (in dB, up to 12 either way).
+   That applies even to an unmeasured song.
+
+Moving a song's start or end makes its measurement out of date (the game page counts it as unmeasured again).
+Browsers only allow the levelling after a click or key press in the console window; until then songs play at
+their own volume, and the console says so. Background music and sound effects aren't changed.
 
 ### Running a game again
 
@@ -439,6 +464,7 @@ Before:
 - [ ] Game created with enough cards; rounds set up (add a spare round or two)
 - [ ] Cards printed from the PDF, if you are using paper
 - [ ] Computer and phones on the same network; console opened by network address; join link tried on a phone
+- [ ] Song volumes measured (game page, **Volume levels**)
 - [ ] Speakers connected and volume tested; one click on the console page done so the browser allows audio
 
 During:
@@ -481,6 +507,7 @@ app/
     patterns.py      what counts as a win
     shapes_store.py  looking up custom win shapes
     checker.py       claim verification
+    loudness.py      evening out volumes: the gain each song is played at
     card_check.py    checking a printed card, square by square, for the console and the phone
     ticket_gen.py    card generation
     playlist.py      play order
@@ -508,7 +535,7 @@ app/
     plans.py         saved plans as a live checklist
   templates/         Jinja pages
   static/            styles.css, plain ES modules (app, play, console, live, playback, branding, remote,
-                     suggest, clip_time, footer_md, play_order, card_view), effects/ (the built-in WAV sounds)
+                     suggest, clip_time, footer_md, play_order, card_view, loudness, measure), effects/ (the built-in WAV sounds)
 scripts/              generate_effects.py (made the first synthesised sounds; kept for reference)
 tests/
 Dockerfile, compose.yaml, .dockerignore
@@ -538,7 +565,7 @@ Dockerfile, compose.yaml, .dockerignore
 
 New tables are created on start-up. Columns added to existing tables since the first release are added by a
 small built-in migration (`ADDITIVE_COLUMNS` in `app/db.py`: the account flags on `user`; `song.sha256`,
-`auto_fill`, `fun_fact` and `updated_at`; `round.shapes_json`; `game.current_round`, `series_id`, `run_number`,
+`auto_fill`, `fun_fact`, `updated_at`, `loudness_db`, `loudness_for` and `volume_adjust_db`; `round.shapes_json`; `game.current_round`, `series_id`, `run_number`,
 `remote_code`, `ticket_footer` and `card_content`; `branding.text_style_json`), so an existing `data/bingo.db3`
 keeps working. Add Alembic before real users depend on the data.
 
@@ -547,6 +574,8 @@ keeps working. Add Alembic before real users depend on the data.
 - A team is tied to the browser it joined from (a signed cookie). Reopening the join link in the same
   browser resumes the team; another browser joins as a new team.
 - Fades use the browser's volume control, which iPhones and iPads ignore. Use a laptop as the host.
+- Song volume measurements and adjustments aren't included when a game is exported to another install; measure
+  the songs again there.
 - Browsers may block audio until the page has been clicked. If a clip doesn't start, press Replay.
 - Printed cards use a built-in font that covers Western European text. Other alphabets print as `?`
   unless you set `MUSICBINGO_PDF_FONT`.

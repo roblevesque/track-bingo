@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 from app.models import Claim, Game, GameSong, Round, Song, Team, Ticket
 from app.services.effects import available_effects
 from app.services.events import HOST, PLAYERS, REMOTE, Event, Hub
+from app.services.loudness import is_measured, playback_gain_db
 from app.services.patterns import describe_rules
 from app.services.shapes_store import shapes_for_size
 from app.services.playlist import played_ids
@@ -93,6 +94,7 @@ def host_state(session: Session, game: Game, join_url: str, remote: dict | None 
             "audio_url": audio_url(song.id),
             "start_ms": song.start_ms,
             "end_ms": song.end_ms,
+            "gain_db": playback_gain_db(song),  # the console plays the clip this much louder (or quieter, if negative)
         }
 
     played = played_ids(order, game.current_index)
@@ -136,6 +138,7 @@ def host_state(session: Session, game: Game, join_url: str, remote: dict | None 
             for c, name, number in claims
         ],
         "winners": _winners(session, game),
+        "unmeasured": sum(1 for sid in set(order) if sid in songs and not is_measured(songs[sid])),
         "effects": available_effects(game.owner_id),
         "remote": remote or {"enabled": bool(game.remote_code), "code": game.remote_code, "url": "", "connected": 0},
     }

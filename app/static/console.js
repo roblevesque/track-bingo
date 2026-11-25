@@ -26,6 +26,7 @@ if (root) {
   const startPlays = $("#start-plays");
   const bgVolume = $("#bg-volume");
   const bgAfter = $("#bg-after");
+  const evenBox = $("#even-volume");
 
   let state = JSON.parse(document.querySelector("#initial-state").textContent);
   let playing = null; // the song whose start/end window is playing
@@ -54,12 +55,13 @@ if (root) {
     bgVolume.value = clampNumber(saved.bgVolume, 0, 100, 40);
     bgAfter.checked = Boolean(saved.bgAfter);
     startPlays.checked = saved.startPlays !== false; // on unless the host turned it off
+    evenBox.checked = saved.even !== false;
   } catch { /* storage unavailable: keep the defaults in the page */ }
   const saveSettings = () => {
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify({
         auto: autoBox.checked, autoSeconds: autoSeconds.value, fade: fadeSeconds.value,
-        bgVolume: bgVolume.value, bgAfter: bgAfter.checked, startPlays: startPlays.checked,
+        bgVolume: bgVolume.value, bgAfter: bgAfter.checked, startPlays: startPlays.checked, even: evenBox.checked,
       }));
     } catch { /* ignore */ }
   };
@@ -98,10 +100,64 @@ if (root) {
     return data;
   }
 
+  // ---- evening out volumes: each song's gain (from its measured loudness) is applied through Web Audio, with a
+  // limiter after it so a raised clip can't distort. Browsers only allow this after a click or key press in the
+  // page, so it starts then; until it does, songs play at their own volume.
+  let leveller = null;
+  function startLeveller() {
+    if (leveller) return;
+    const Context = window.AudioContext || window.webkitAudioContext;
+    if (!Context) return;
+    try {
+      const context = new Context();
+      const gain = context.createGain();
+      const limiter = context.createDynamicsCompressor();
+      limiter.threshold.value = -1;
+      limiter.knee.value = 0;
+      limiter.ratio.value = 20;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.25;
+      context.createMediaElementSource(audio).connect(gain).connect(limiter).connect(context.destination);
+      leveller = { context, gain };
+      document.removeEventListener("pointerdown", startLeveller, true);
+      document.removeEventListener("keydown", startLeveller, true);
+      applyLevel();
+    } catch { /* no Web Audio: songs play at their own volume */ }
+  }
+  document.addEventListener("pointerdown", startLeveller, true);
+  document.addEventListener("keydown", startLeveller, true);
+  let levelGain = 1; // this clip's gain as a multiplier
+  let fadeLevel = 1; // where the fade in/out has got to
+  // The fade and the levelling go into the gain node together (a routed <audio> element's own volume isn't
+  // honoured by every browser); without Web Audio the fade uses the element's volume as before.
+  function setOutput() {
+    if (!leveller) { audio.volume = fadeLevel; return; }
+    audio.volume = 1;
+    const param = leveller.gain.gain;
+    const now = leveller.context.currentTime;
+    param.cancelScheduledValues(now);
+    param.setTargetAtTime(levelGain * fadeLevel, now, 0.02);
+  }
+  function applyLevel() {
+    const db = evenBox.checked && playing ? playing.gain_db || 0 : 0;
+    levelGain = 10 ** (db / 20);
+    setOutput();
+    let text = "";
+    if (evenBox.checked) {
+      if (!leveller) text = "Volume levelling starts after you click anywhere in this window.";
+      else if (playing) text = Math.abs(db) < 0.05 ? "This clip plays at its own volume." : `This clip plays ${Math.abs(db).toFixed(1)} dB ${db > 0 ? "louder" : "quieter"}.`;
+      if (state.unmeasured) text += ` ${state.unmeasured} song${state.unmeasured === 1 ? " hasn't" : "s haven't"} been measured yet (Volume levels on the game page).`;
+    }
+    $("#level-status").textContent = text.trim();
+  }
+  evenBox.addEventListener("change", () => { saveSettings(); applyLevel(); });
+  audio.addEventListener("play", () => { if (leveller && leveller.context.state !== "running") leveller.context.resume(); });
+
   // ---- audio: play only the saved start..end window of each clip
   function playSong(song) {
     if (!song) return;
     playing = song;
+    applyLevel();
     const begin = () => {
       audio.currentTime = (song.start_ms || 0) / 1000;
       audio.play().catch(() => showError("Your browser blocked autoplay. Press Replay to play the clip."));
@@ -159,7 +215,8 @@ if (root) {
     if (!playing || audio.paused) return;
     const start = (playing.start_ms || 0) / 1000;
     const end = playing.end_ms ? playing.end_ms / 1000 : audio.duration;
-    audio.volume = fadeVolume(audio.currentTime, start, end, clampNumber(fadeSeconds.value, 0, 10, 0));
+    const fade = fadeVolume(audio.currentTime, start, end, clampNumber(fadeSeconds.value, 0, 10, 0));
+    if (fade !== fadeLevel) { fadeLevel = fade; setOutput(); }
     if (playing.end_ms && audio.currentTime >= end) {
       windowStop = true;
       audio.pause();
@@ -304,17 +361,21 @@ if (root) {
   function cancelCountdown() {
     clearInterval(countdownTimer);
     countdownTimer = null;
+    $("#btn-cancel-countdown").hidden = true;
     if (!autoHold) setAutoStatus("");
   }
+  // After a clip: the next song when auto-play is on, or, after the last song, the end of the game (always, so
+  // the game doesn't sit open). Both wait the same number of seconds and can be cancelled.
   function startCountdown() {
-    const exhausted = state.songs_played >= state.total_songs;
-    if (!autoBox.checked || autoHold || state.game.status !== "active" || exhausted) return;
+    const last = state.songs_played >= state.total_songs;
+    if (autoHold || state.game.status !== "active" || (!last && !autoBox.checked)) return;
     const due = Date.now() + clampNumber(autoSeconds.value, 0, 120, 10) * 1000;
     clearInterval(countdownTimer);
+    $("#btn-cancel-countdown").hidden = false;
     const tick = () => {
       const left = Math.ceil((due - Date.now()) / 1000);
-      if (left <= 0) { cancelCountdown(); advance(); }
-      else setAutoStatus(`Next song in ${left}s. Press Pause to stop auto-play.`);
+      if (left <= 0) { cancelCountdown(); if (last) finishGame(); else advance(); }
+      else setAutoStatus(last ? `That was the last song. Ending the game in ${left}s.` : `Next song in ${left}s.`);
     };
     countdownTimer = setInterval(tick, 250);
     tick();
@@ -392,13 +453,15 @@ if (root) {
       autoHold = true;
       clearInterval(countdownTimer);
       countdownTimer = null;
-      if (autoBox.checked) setAutoStatus("Auto-play is on hold: a team called bingo. Press Next song to continue.");
+      $("#btn-cancel-countdown").hidden = true;
+      if (next.songs_played >= next.total_songs) setAutoStatus("A team called bingo on the last song, so the game stays open. Press End game when you're ready.");
+      else if (autoBox.checked) setAutoStatus("Auto-play is on hold: a team called bingo. Press Next song to continue.");
     }
   }
   [autoBox, autoSeconds, fadeSeconds].forEach((input) => input.addEventListener("change", () => {
     saveSettings();
     if (!autoBox.checked) { autoHold = false; cancelCountdown(); }
-    if (input === fadeSeconds && audio.paused) audio.volume = 1;
+    if (input === fadeSeconds && audio.paused) { fadeLevel = 1; setOutput(); }
   }));
 
   // ---- drawing the state
@@ -541,6 +604,7 @@ if (root) {
     renderRules();
     recheckCard();
     showProgress();
+    applyLevel();
     renderEffects();
     renderBackground();
     renderRemote();
@@ -559,8 +623,7 @@ if (root) {
   pauseButton.addEventListener("click", () => { if (audio.paused) audio.play(); else audio.pause(); });
   $("#btn-skip").addEventListener("click", () => skipNext());
   $("#btn-reshuffle").addEventListener("click", async () => { const d = await post("reshuffle"); if (d) render(d); });
-  $("#btn-finish").addEventListener("click", async () => {
-    if (!window.confirm("End the game for everyone?")) return;
+  async function finishGame() {
     const d = await post("finish");
     if (d) {
       audio.pause();
@@ -568,6 +631,12 @@ if (root) {
       render(d);
       if (bgAfter.checked) startBackground();
     }
+  }
+  $("#btn-finish").addEventListener("click", () => { if (window.confirm("End the game for everyone?")) finishGame(); });
+  $("#btn-cancel-countdown").addEventListener("click", () => {
+    const ending = state.songs_played >= state.total_songs;
+    cancelCountdown();
+    setAutoStatus(ending ? "The game stays open. Press End game when you're ready." : "");
   });
   $("#btn-next-round").addEventListener("click", async () => {
     const d = await post("round", { number: state.round.number + 1 });

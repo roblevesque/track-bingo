@@ -189,6 +189,26 @@
   {% endif %}
 </section>
 
+{% if playlist %}
+<section class="card" id="volumes">
+  <h2>Volume levels</h2>
+  {% if unmeasured %}
+  <div data-measure data-csrf="{{ csrf_token }}">
+    <script type="application/json" data-measure-songs>{{ unmeasured|tojson }}</script>
+    <p>{{ playlist|length - unmeasured|length }} of {{ playlist|length }} songs measured. The console evens out the
+      volume of measured songs only.</p>
+    <p class="row"><button type="button" data-measure-start>Measure {{ unmeasured|length }} song{{ '' if unmeasured|length == 1 else 's' }}</button>
+      <span class="muted" data-measure-status role="status"></span></p>
+    <p class="muted">Your browser downloads each song and measures how loud its clip is (nothing is changed in the
+      files). Keep this page open until it finishes. A song needs measuring again after its clip times change.</p>
+  </div>
+  {% else %}
+  <p class="muted">All {{ playlist|length }} songs are measured, so the console plays them at about the same loudness.
+    To nudge one song, open it in the library and set its volume adjustment.</p>
+  {% endif %}
+</section>
+{% endif %}
+
 <section class="card" id="play-order">
   <h2>Play order</h2>
   {% if game.status == 'finished' %}
@@ -302,4 +322,5 @@
 </section>
 {% endblock %}
 {% block scripts %}<script type="module" src="{{ static_url('footer_md.js') }}"></script>
-<script type="module" src="{{ static_url('play_order.js') }}"></script>{% endblock %}
+<script type="module" src="{{ static_url('play_order.js') }}"></script>
+<script type="module" src="{{ static_url('measure.js') }}"></script>{% endblock %}

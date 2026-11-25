@@ -67,6 +67,21 @@
       seconds earlier. The length box is for this visit only; the default is set on the Library page. The tick box is
       remembered for this song.</p>
 
+    <fieldset class="volume">
+      <legend>Volume</legend>
+      <p data-measure-summary>{{ volume_text }}</p>
+      <div class="row" data-measure data-csrf="{{ csrf_token }}">
+        <script type="application/json" data-measure-songs>{{ [{"id": song.id, "title": song.title, "audio_url": "/library/" ~ song.id ~ "/audio", "start_ms": song.start_ms, "end_ms": song.end_ms}]|tojson }}</script>
+        <button type="button" class="secondary" data-measure-start>Measure this clip</button>
+        <span class="muted" data-measure-status role="status"></span>
+      </div>
+      <label>Volume adjustment <span class="muted">(dB: positive is louder, negative quieter; blank for none)</span>
+        <input name="volume_adjust" type="number" min="-12" max="12" step="0.5" value="{{ form.volume_adjust }}">
+      </label>
+      <p class="muted">The console plays every measured clip at about the same loudness. Measuring uses the saved
+        clip times, so save first if you changed them. Use the adjustment if a song still sounds too loud or quiet.</p>
+    </fieldset>
+
     <label class="check">
       <input type="checkbox" name="write_tags_to_file" value="on">
       Also write title and artist into the audio file&rsquo;s own tags
@@ -76,3 +91,4 @@
   </form>
 </section>
 {% endblock %}
+{% block scripts %}<script type="module" src="{{ static_url('measure.js') }}"></script>{% endblock %}

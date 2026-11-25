@@ -32,6 +32,8 @@ ADDITIVE_COLUMNS = {
     "song": [
         ("sha256", "TEXT NOT NULL DEFAULT ''"), ("auto_fill", "INTEGER NOT NULL DEFAULT 1"),
         ("fun_fact", "TEXT NOT NULL DEFAULT ''"), ("updated_at", "DATETIME"),
+        ("loudness_db", "REAL"), ("loudness_for", "TEXT NOT NULL DEFAULT ''"),
+        ("volume_adjust_db", "REAL NOT NULL DEFAULT 0"),
     ],
     "round": [("shapes_json", "TEXT NOT NULL DEFAULT ''")],
     "game": [

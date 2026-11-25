@@ -14,6 +14,7 @@ from app.deps import require_game_creator, require_user
 from app.models import Claim, Game, GameSong, Round, Song, Team, Ticket, User
 from app.security import check_csrf
 from app.services.series import latest_runs, series_key
+from app.services.loudness import is_measured
 from app.services.brand_store import brand_context, brand_style
 from app.services.cardtext import CONTENTS, card_text, clean_content
 from app.services.branding import VARIABLE_HELP, clean_footer, footer_problem, unknown_variables
@@ -205,6 +206,11 @@ def game_detail(
     order_upcoming = [by_id[sid] for sid in order[game.current_index:]]
     if game.status == "draft" and not order:
         order_upcoming = list(by_id.values())
+    # Songs whose clip window hasn't been measured for loudness, so the console can't even out their volume yet.
+    unmeasured = [
+        {"id": s.id, "title": s.title, "audio_url": f"/library/{s.id}/audio", "start_ms": s.start_ms, "end_ms": s.end_ms}
+        for s in by_id.values() if not is_measured(s)
+    ]
     ticket_numbers = session.exec(select(Ticket.number).where(Ticket.game_id == game.id).order_by(Ticket.number)).all()
     song_count = session.exec(select(func.count(GameSong.song_id)).where(GameSong.game_id == game.id)).one()
     team_count = session.exec(select(func.count(Team.id)).where(Team.game_id == game.id)).one()
@@ -226,6 +232,7 @@ def game_detail(
         order_played=order_played,
         order_upcoming=order_upcoming,
         order_planned=bool(game.play_order),
+        unmeasured=unmeasured,
         ticket_numbers=ticket_numbers,
         song_count=song_count,
         team_count=team_count,

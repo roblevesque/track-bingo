@@ -43,6 +43,11 @@ class Song(SQLModel, table=True):
     start_ms: int = 0
     end_ms: int | None = None  # None = play to the end
     auto_fill: bool = True  # when one end of the play window is captured, fill in the other from the default clip length
+    # Evening out volumes (app/services/loudness.py): the clip window's measured loudness in LUFS, the window it was
+    # measured for ("start:end"), and the host's own nudge in dB.
+    loudness_db: float | None = None
+    loudness_for: str = ""
+    volume_adjust_db: float = 0.0
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime | None = None  # when the song was last edited; None until it has been
 

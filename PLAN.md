@@ -249,7 +249,7 @@ Low-tier additions: `Song.fun_fact`; `app/services/qr.py` (dependency-free QR en
 - [X] Checking a printed card shows the card with played squares crossed out, on the console and the phone remote (`app/services/card_check.py`, `card_view.js`, `/remote/{id}/check`)
 - [X] Clip progress bar and time on the console and the phone remote (`/games/{id}/run/playback` relays the console's position; `Hub.playback`)
 - [X] Played songs on the phone remote, folded by default
-- [ ] Even out clip volumes: measure each clip window's loudness in the browser, store a gain per song, apply it in the console
-- [ ] End the game automatically after the last clip
+- [X] Even out clip volumes: measure each clip window's loudness in the browser (`loudness.js`, BS.1770), store it per song with the window it was measured for, apply the gain plus the host's nudge in the console through Web Audio with a limiter (`app/services/loudness.py`, `measure.js`, `/library/{id}/loudness`)
+- [X] End the game automatically after the last clip (after the usual wait; Cancel or a last-song bingo keeps it open)
 - [ ] Resume reportedly disappeared after a last-round win: not reproduced in the code, waiting on details from the host
 - [ ] Volume control on the phone remote (only if evening out the volumes isn't enough)
